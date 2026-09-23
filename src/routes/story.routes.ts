@@ -1,6 +1,8 @@
 import { Router } from "express";
 
 import { storyController } from "../controllers/story.controller";
+import { likeController } from "../controllers/like.controller";
+import { commentController } from "../controllers/comment.controller";
 
 import { authenticateToken } from "../middlewares/auth.middleware";
 import validate from "../middlewares/validate.middleware";
@@ -8,6 +10,7 @@ import {
   createStorySchema,
   updateStorySchema,
 } from "../middlewares/story.validation";
+import { createCommentSchema } from "../middlewares/comment.validation";
 
 const router = Router();
 
@@ -25,7 +28,7 @@ router.get("/user/:username", (req, res) => storyController.getStoriesByUser(req
 router.get("/slug/:slug", (req, res) => storyController.getStoryBySlug(req, res));
 
 // ==========================================
-// PROTECTED ROUTES (Authentication required)
+// PROTECTED STORY MANAGEMENT ROUTES
 // ==========================================
 
 // POST /api/stories/create - Create a new story
@@ -39,8 +42,61 @@ router.post(
 // GET /api/stories/my - Get current user's stories
 router.get("/my", authenticateToken, (req, res) => storyController.getMyStories(req, res));
 
+// GET /api/stories/stats/my - Get current user's story statistics
+router.get(
+  "/stats/my",
+  authenticateToken,
+  (req, res) => storyController.getMyStoryStats(req, res),
+);
+
 // GET /api/stories - Get all stories with filters
 router.get("/", authenticateToken, (req, res) => storyController.getAllStories(req, res));
+
+// ==========================================
+// SOCIAL INTERACTIONS: LIKES & COMMENTS
+// ==========================================
+
+// POST /api/stories/:identifier/like - Like a story
+router.post("/:identifier/like", authenticateToken, (req, res) =>
+  likeController.likeStory(req, res)
+);
+
+// DELETE /api/stories/:identifier/like - Unlike a story
+router.delete("/:identifier/like", authenticateToken, (req, res) =>
+  likeController.unlikeStory(req, res)
+);
+
+// POST /api/stories/:identifier/like/toggle - Toggle like on a story
+router.post("/:identifier/like/toggle", authenticateToken, (req, res) =>
+  likeController.toggleLike(req, res)
+);
+
+// GET /api/stories/:identifier/likes - Get users who liked a story
+router.get("/:identifier/likes", (req, res) =>
+  likeController.getStoryLikes(req, res)
+);
+
+// GET /api/stories/:identifier/like/status - Check if authenticated user liked story
+router.get("/:identifier/like/status", authenticateToken, (req, res) =>
+  likeController.getStoryLikeStatus(req, res)
+);
+
+// POST /api/stories/:identifier/comments - Add a comment to a story
+router.post(
+  "/:identifier/comments",
+  authenticateToken,
+  validate(createCommentSchema),
+  (req, res) => commentController.addComment(req, res)
+);
+
+// GET /api/stories/:identifier/comments - Get all comments on a story
+router.get("/:identifier/comments", (req, res) =>
+  commentController.getStoryComments(req, res)
+);
+
+// ==========================================
+// STORY MUTATION ROUTES BY SLUG
+// ==========================================
 
 // PUT /api/stories/:slug - Update a story
 router.put(
@@ -55,13 +111,6 @@ router.delete(
   "/:slug",
   authenticateToken,
   (req, res) => storyController.deleteStory(req, res),
-);
-
-// GET /api/stories/stats/my - Get current user's story statistics
-router.get(
-  "/stats/my",
-  authenticateToken,
-  (req, res) => storyController.getMyStoryStats(req, res),
 );
 
 export default router;

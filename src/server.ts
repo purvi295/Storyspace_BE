@@ -20,7 +20,7 @@ const startServer = async () => {
     // 2. Start HTTP server
     server = app.listen(PORT, () => {
       console.log(`=========================================`);
-      console.log(`🚀 Task API Server running on port ${PORT}`);
+      console.log(`🚀 API Server running on port ${PORT}`);
       console.log(`📡 Environment: ${config.nodeEnv}`);
       console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
       console.log(`=========================================`);

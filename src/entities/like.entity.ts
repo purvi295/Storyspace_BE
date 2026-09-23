@@ -33,7 +33,7 @@ export class Like {
   @JoinColumn({ name: 'story_uuid', referencedColumnName: 'story_uuid' })
   story: Story;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user_id' })
+  @ManyToOne(() => User, (user) => user.likes, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id', referencedColumnName: 'user_uuid' })
   user: User;
 }

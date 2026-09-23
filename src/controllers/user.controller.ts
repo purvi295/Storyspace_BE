@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { UpdateUserProfileDto } from "../dtos/user.dto";
 import { userService } from "../services/user.service";
+import { followService } from "../services/follow.service";
 import {
   sendApiResponse,
   sendErrorResponse,
@@ -21,7 +22,7 @@ export class UserController {
 
       return sendApiResponse(res, 200, { user }, "User profile fetched successfully");
     } catch (error: any) {
-      const status = error.message === "User not found" ? 404 : 500;
+      const status = error.statusCode || (error.message === "User not found" ? 404 : 500);
       return sendErrorResponse(res, status, error.message);
     }
   }
@@ -29,7 +30,7 @@ export class UserController {
   // Update own profile
   async updateProfile(
     req: Request<{}, unknown, UpdateUserProfileDto>,
-    res: Response,
+    res: Response
   ) {
     try {
       if (!req.user) {
@@ -40,11 +41,12 @@ export class UserController {
 
       return sendApiResponse(res, 200, { user }, "Profile updated successfully");
     } catch (error: any) {
-      const status = error.message === "User not found" ? 404 : 500;
+      const status = error.statusCode || (error.message === "User not found" ? 404 : 500);
       return sendErrorResponse(res, status, error.message);
     }
   }
-  //get all user list excluding the admins
+
+  // Get all user list excluding the admins
   async getAllUsersList(req: Request, res: Response) {
     try {
       const page = Number(req.query.page);
@@ -55,10 +57,126 @@ export class UserController {
         res,
         users,
         pagination,
-        "Users list fetched successfully",
+        "Users list fetched successfully"
       );
     } catch (err: any) {
-      return sendErrorResponse(res, 500, err.message);
+      const status = err.statusCode || 500;
+      return sendErrorResponse(res, status, err.message);
+    }
+  }
+
+  // POST /api/users/:target/follow - Follow a user
+  async followUser(req: Request, res: Response) {
+    try {
+      const followerUuid = req.user?.user_uuid;
+      if (!followerUuid) {
+        return sendErrorResponse(res, 401, "User not authenticated");
+      }
+
+      const target = req.params.user_uuid || req.params.id || req.params.username || req.params.target;
+      if (!target) {
+        return sendErrorResponse(res, 400, "Target user identifier is required");
+      }
+
+      const result = await followService.followUser(followerUuid, target);
+      const statusCode = result.alreadyFollowing ? 200 : 201;
+
+      return sendApiResponse(res, statusCode, result, result.message);
+    } catch (error: any) {
+      const status = error.statusCode || 400;
+      return sendErrorResponse(res, status, error.message);
+    }
+  }
+
+  // DELETE /api/users/:target/follow - Unfollow a user
+  async unfollowUser(req: Request, res: Response) {
+    try {
+      const followerUuid = req.user?.user_uuid;
+      if (!followerUuid) {
+        return sendErrorResponse(res, 401, "User not authenticated");
+      }
+
+      const target = req.params.user_uuid || req.params.id || req.params.username || req.params.target;
+      if (!target) {
+        return sendErrorResponse(res, 400, "Target user identifier is required");
+      }
+
+      const result = await followService.unfollowUser(followerUuid, target);
+      return sendApiResponse(res, 200, result, result.message);
+    } catch (error: any) {
+      const status = error.statusCode || 400;
+      return sendErrorResponse(res, status, error.message);
+    }
+  }
+
+  // GET /api/users/:target/followers - Get user's followers
+  async getFollowers(req: Request, res: Response) {
+    try {
+      const target = req.params.user_uuid || req.params.id || req.params.username || req.params.target;
+      if (!target) {
+        return sendErrorResponse(res, 400, "Target user identifier is required");
+      }
+
+      const page = req.query.page ? Number(req.query.page) : 1;
+      const limit = req.query.limit ? Number(req.query.limit) : 10;
+
+      const result = await followService.getFollowers(target, page, limit);
+
+      return sendPaginatedResponse(
+        res,
+        result.followers,
+        result.pagination,
+        "Followers retrieved successfully"
+      );
+    } catch (error: any) {
+      const status = error.statusCode || 500;
+      return sendErrorResponse(res, status, error.message);
+    }
+  }
+
+  // GET /api/users/:target/following - Get users followed by user
+  async getFollowing(req: Request, res: Response) {
+    try {
+      const target = req.params.user_uuid || req.params.id || req.params.username || req.params.target;
+      if (!target) {
+        return sendErrorResponse(res, 400, "Target user identifier is required");
+      }
+
+      const page = req.query.page ? Number(req.query.page) : 1;
+      const limit = req.query.limit ? Number(req.query.limit) : 10;
+
+      const result = await followService.getFollowing(target, page, limit);
+
+      return sendPaginatedResponse(
+        res,
+        result.following,
+        result.pagination,
+        "Following list retrieved successfully"
+      );
+    } catch (error: any) {
+      const status = error.statusCode || 500;
+      return sendErrorResponse(res, status, error.message);
+    }
+  }
+
+  // GET /api/users/:target/is-following - Check if current user is following target
+  async isFollowing(req: Request, res: Response) {
+    try {
+      const followerUuid = req.user?.user_uuid;
+      if (!followerUuid) {
+        return sendErrorResponse(res, 401, "User not authenticated");
+      }
+
+      const target = req.params.user_uuid || req.params.id || req.params.username || req.params.target;
+      if (!target) {
+        return sendErrorResponse(res, 400, "Target user identifier is required");
+      }
+
+      const result = await followService.isFollowing(followerUuid, target);
+      return sendApiResponse(res, 200, result, "Follow status retrieved successfully");
+    } catch (error: any) {
+      const status = error.statusCode || 400;
+      return sendErrorResponse(res, status, error.message);
     }
   }
 }
