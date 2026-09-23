@@ -1,12 +1,12 @@
-import { AppDataSource } from '../database/data-source';
-import { User } from '../entities/user.entity';
+import { AppDataSource } from "../database/data-source";
+import { User } from "../entities/user.entity";
 
 export class UserRepository {
   private repository = AppDataSource.getRepository(User);
 
-  // Find user by ID
-  async findById(id: number): Promise<User | null> {
-    return this.repository.findOne({ where: { id } });
+  // Find user by UUID primary key
+  async findByUuid(user_uuid: string): Promise<User | null> {
+    return this.repository.findOne({ where: { user_uuid } });
   }
 
   // Find user by email
@@ -22,41 +22,56 @@ export class UserRepository {
   // Find user by username with follower/following counts
   async findByUsernameWithCounts(username: string): Promise<User | null> {
     const user = await this.repository
-      .createQueryBuilder('user')
-      .leftJoinAndSelect('user.followers', 'followers')
-      .leftJoinAndSelect('user.following', 'following')
-      .where('user.username = :username', { username })
+      .createQueryBuilder("user")
+      .leftJoinAndSelect("user.followers", "followers")
+      .leftJoinAndSelect("user.following", "following")
+      .where("user.username = :username", { username })
       .getOne();
 
     return user;
   }
 
   // Get follower count
-  async getFollowerCount(userId: number): Promise<number> {
+  async getFollowerCount(userUuid: string): Promise<number> {
     return this.repository
-      .createQueryBuilder('user')
-      .leftJoin('user.followers', 'followers')
-      .where('user.id = :userId', { userId })
+      .createQueryBuilder("user")
+      .leftJoin("user.followers", "followers")
+      .where("user.user_uuid = :userUuid", { userUuid })
       .getCount();
   }
 
   // Get following count
-  async getFollowingCount(userId: number): Promise<number> {
+  async getFollowingCount(userUuid: string): Promise<number> {
     return this.repository
-      .createQueryBuilder('user')
-      .leftJoin('user.following', 'following')
-      .where('user.id = :userId', { userId })
+      .createQueryBuilder("user")
+      .leftJoin("user.following", "following")
+      .where("user.user_uuid = :userUuid", { userUuid })
       .getCount();
   }
 
   // Update user profile
-  async updateProfile(userId: number, data: {
-    bio?: string;
-    avatar_url?: string;
-    full_name?: string;
-  }): Promise<User | null> {
-    await this.repository.update(userId, data);
-    return this.findById(userId);
+  async updateProfile(
+    userUuid: string,
+    data: {
+      bio?: string;
+      avatar_url?: string;
+      full_name?: string;
+    },
+  ): Promise<User | null> {
+    await this.repository.update({ user_uuid: userUuid }, data);
+    return this.findByUuid(userUuid);
+  }
+
+  //get all user list excluding the admin users
+  async getAllUsers(options: { skip: number; take: number; role: string }) {
+    const { skip, take, role } = options;
+    const users = await this.repository.find({
+      skip,
+      take,
+      where: { role },
+    });
+    const total = await this.repository.count({ where: { role } });
+    return { users, total };
   }
 }
 

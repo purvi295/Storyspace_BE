@@ -1,16 +1,13 @@
-import { Request, Response } from 'express';
-import { authService } from '../services/auth.service';
+import { Request, Response } from "express";
+import { authService } from "../services/auth.service";
+import { EditAuthProfileDto, LoginDto, RegisterDto } from "../dtos/auth.dto";
+import { sendApiResponse, sendErrorResponse } from "../utils/api.response";
 
 export class AuthController {
   // Register new user
-  async register(req: Request, res: Response) {
+  async register(req: Request<{}, unknown, RegisterDto>, res: Response) {
     try {
       const { email, password, username, fullName } = req.body;
-
-      // Validate required fields
-      if (!email || !password || !username || !fullName) {
-        return res.status(400).json({ error: 'All fields are required' });
-      }
 
       const result = await authService.register({
         email,
@@ -19,35 +16,22 @@ export class AuthController {
         fullName,
       });
 
-      res.status(201).json({
-        message: 'User registered successfully',
-        user: result.user,
-        token: result.token,
-      });
+      return sendApiResponse(res, 201, result, "User registered successfully");
     } catch (error: any) {
-      res.status(400).json({ error: error.message });
+      return sendErrorResponse(res, 400, error.message);
     }
   }
 
   // Login user
-  async login(req: Request, res: Response) {
+  async login(req: Request<{}, unknown, LoginDto>, res: Response) {
     try {
       const { email, password } = req.body;
 
-      // Validate required fields
-      if (!email || !password) {
-        return res.status(400).json({ error: 'Email and password are required' });
-      }
-
       const result = await authService.login({ email, password });
 
-      res.status(200).json({
-        message: 'Login successful',
-        user: result.user,
-        token: result.token,
-      });
+      return sendApiResponse(res, 200, result, "Login successful");
     } catch (error: any) {
-      res.status(401).json({ error: error.message });
+      return sendErrorResponse(res, 401, error.message);
     }
   }
 
@@ -55,21 +39,37 @@ export class AuthController {
   async me(req: Request, res: Response) {
     try {
       if (!req.user) {
-        return res.status(401).json({ error: 'User not authenticated' });
+        return sendErrorResponse(res, 401, "User not authenticated");
       }
 
-      const user = await authService.getUserById(req.user.id);
+      const user = await authService.getUserByUuid(req.user.user_uuid);
 
       if (!user) {
-        return res.status(404).json({ error: 'User not found' });
+        return sendErrorResponse(res, 404, "User not found");
       }
 
       // Return user without password
       const { password, ...userWithoutPassword } = user;
 
-      res.status(200).json({ user: userWithoutPassword });
+      return sendApiResponse(res, 200, { user: userWithoutPassword }, "Current user fetched successfully");
     } catch (error: any) {
-      res.status(500).json({ error: error.message });
+      return sendErrorResponse(res, 500, error.message);
+    }
+  }
+
+  async editProfile(req: Request<{}, unknown, EditAuthProfileDto>, res: Response) {
+    try {
+      if (!req.user) {
+        return sendErrorResponse(res, 401, "User not authenticated");
+      }
+
+      const user = await authService.editProfile(req.user.user_uuid, req.body);
+      const { password, ...userWithoutPassword } = user;
+
+      return sendApiResponse(res, 200, { user: userWithoutPassword }, "Profile updated successfully");
+    } catch (error: any) {
+      const status = error.message === "User not found" ? 404 : 500;
+      return sendErrorResponse(res, status, error.message);
     }
   }
 }

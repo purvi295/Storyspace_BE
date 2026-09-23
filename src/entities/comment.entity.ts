@@ -16,13 +16,13 @@ export class Comment {
   @PrimaryGeneratedColumn()
   id: number;
 
-  // Maps to "story_id" column as defined in the migration
-  @Column({ name: 'story_id' })
-  story_id: number;
+  // UUID of the story this comment belongs to.
+  @Column({ name: 'story_uuid', type: 'uuid' })
+  story_uuid: string;
 
   // Maps to "user_id" column as defined in the migration
-  @Column({ name: 'user_id' })
-  user_id: number;
+  @Column({ name: 'user_id', type: 'uuid' })
+  user_id: string;
 
   @Column({ type: 'text' })
   content: string;
@@ -35,7 +35,7 @@ export class Comment {
 
   // --- Relations ---
   @ManyToOne(() => Story, (story) => story.comments, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'story_id' })
+  @JoinColumn({ name: 'story_uuid', referencedColumnName: 'story_uuid' })
   story: Story;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })

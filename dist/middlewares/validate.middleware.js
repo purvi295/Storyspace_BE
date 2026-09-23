@@ -15,7 +15,7 @@ const validate = (schema) => {
         });
         if (error) {
             const errorMessages = error.details.map((detail) => detail.message);
-            return next(api_error_1.default.badRequest('Validation Error', errorMessages));
+            return next(api_error_1.default.badRequest("Validation Error", errorMessages));
         }
         req.body = value;
         next();

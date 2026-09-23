@@ -6,7 +6,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.errorHandler = exports.notFoundHandler = void 0;
-const env_config_1 = __importDefault(require("../config/env.config"));
 const api_error_1 = __importDefault(require("../utils/api.error"));
 /**
  * Middleware to catch 404 Not Found errors for undefined endpoints.
@@ -20,7 +19,7 @@ exports.notFoundHandler = notFoundHandler;
  */
 const errorHandler = (err, req, res, next) => {
     let statusCode = err.statusCode || 500;
-    let message = err.message || 'Internal Server Error';
+    let message = err.message || "Internal Server Error";
     const details = err.details;
     if (statusCode >= 500) {
         console.error(`💥 [Unhandled Server Error] ${req.method} ${req.originalUrl}:`, err);
@@ -33,7 +32,6 @@ const errorHandler = (err, req, res, next) => {
         statusCode,
         message,
         ...(details && { details }),
-        ...(env_config_1.default.nodeEnv === 'development' && { stack: err.stack }),
     });
 };
 exports.errorHandler = errorHandler;

@@ -11,6 +11,11 @@ const typeorm_1 = require("typeorm");
 const path_1 = __importDefault(require("path"));
 const env_config_1 = __importDefault(require("../config/env.config"));
 const task_entity_1 = require("../entities/task.entity");
+const user_entity_1 = require("../entities/user.entity");
+const story_entity_1 = require("../entities/story.entity");
+const follow_entity_1 = require("../entities/follow.entity");
+const comment_entity_1 = require("../entities/comment.entity");
+const like_entity_1 = require("../entities/like.entity");
 exports.AppDataSource = new typeorm_1.DataSource({
     type: 'postgres',
     host: env_config_1.default.db.host,
@@ -20,8 +25,7 @@ exports.AppDataSource = new typeorm_1.DataSource({
     database: env_config_1.default.db.name,
     synchronize: false, // Use migrations
     logging: env_config_1.default.nodeEnv === 'development',
-    entities: [task_entity_1.Task, path_1.default.join(__dirname, '../entities/**/*.ts')],
+    entities: [task_entity_1.Task, user_entity_1.User, story_entity_1.Story, follow_entity_1.Follow, comment_entity_1.Comment, like_entity_1.Like],
     migrations: [path_1.default.join(__dirname, 'migrations/*.ts')],
     subscribers: [],
 });
-exports.default = exports.AppDataSource;
