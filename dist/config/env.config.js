@@ -14,11 +14,13 @@ exports.config = {
     port: parseInt(process.env.PORT || '3000', 10),
     nodeEnv: process.env.NODE_ENV || 'development',
     db: {
+        url: process.env.DATABASE_URL || '',
         host: process.env.DB_HOST || 'localhost',
         port: parseInt(process.env.DB_PORT || '5432', 10),
         user: process.env.DB_USER || 'postgres',
         password: process.env.DB_PASSWORD || '123',
         name: process.env.DB_NAME || 'node-learning',
+        ssl: process.env.DB_SSL === 'true' || !!process.env.DATABASE_URL,
     },
 };
 exports.default = exports.config;
