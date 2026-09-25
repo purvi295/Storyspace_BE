@@ -1,6 +1,8 @@
 import { ROLES } from "../config/constants";
 import { UpdateUserProfileDto } from "../dtos/user.dto";
 import { userRepository } from "../repositories/user.repository";
+import { followRepository } from "../repositories/follow.repository";
+
 
 export class UserService {
   /** Return a public profile without the password hash. */
@@ -12,8 +14,8 @@ export class UserService {
     }
 
     const [followerCount, followingCount] = await Promise.all([
-      userRepository.getFollowerCount(user.user_uuid),
-      userRepository.getFollowingCount(user.user_uuid),
+      followRepository.countFollowers(user.user_uuid),
+      followRepository.countFollowing(user.user_uuid),
     ]);
 
     const { password, ...userWithoutPassword } = user;

@@ -30,7 +30,7 @@ export class FollowRepository {
   ): Promise<{ follows: Follow[]; total: number }> {
     const [follows, total] = await this.repository.findAndCount({
       where: { following_id },
-      relations: ["follower"],
+      relations: { follower: true },
       order: { created_at: "DESC" },
       skip: options.skip,
       take: options.take,
@@ -46,7 +46,7 @@ export class FollowRepository {
   ): Promise<{ follows: Follow[]; total: number }> {
     const [follows, total] = await this.repository.findAndCount({
       where: { follower_id },
-      relations: ["following"],
+      relations: { following: true },
       order: { created_at: "DESC" },
       skip: options.skip,
       take: options.take,

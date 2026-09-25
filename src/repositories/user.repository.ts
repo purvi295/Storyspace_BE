@@ -2,6 +2,7 @@ import { AppDataSource } from "../database/data-source";
 import { User } from "../entities/user.entity";
 
 export class UserRepository {
+ 
   private repository = AppDataSource.getRepository(User);
 
   // Find user by UUID primary key
