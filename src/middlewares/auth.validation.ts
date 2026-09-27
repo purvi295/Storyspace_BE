@@ -1,47 +1,101 @@
 import Joi from "joi";
 
-/** Validates requests to create a public user account. */
+/**
+ * Validates requests to create a public user account.
+ * Supports both `fullName` and `full_name` formats.
+ */
 export const registerSchema = Joi.object({
-  email: Joi.string().trim().email().max(100).required().messages({
+  email: Joi.string().trim().lowercase().email().max(100).required().messages({
     "string.email": "Email must be a valid email address",
+    "string.empty": "Email cannot be empty",
+    "string.max": "Email cannot exceed 100 characters",
     "any.required": "Email is required",
   }),
   password: Joi.string().min(8).max(128).required().messages({
+    "string.empty": "Password cannot be empty",
     "string.min": "Password must be at least 8 characters long",
+    "string.max": "Password cannot exceed 128 characters",
     "any.required": "Password is required",
   }),
-  username: Joi.string().trim().alphanum().min(3).max(50).required().messages({
-    "string.alphanum": "Username must use the letters and numbers only",
-    "string.min": "Username must be at least 3 characters long",
-    "any.required": "Username is required",
-  }),
-  fullName: Joi.string().trim().min(2).max(150).required().messages({
+  username: Joi.string()
+    .trim()
+    .pattern(/^[a-zA-Z0-9_.-]+$/)
+    .min(3)
+    .max(50)
+    .required()
+    .messages({
+      "string.pattern.base":
+        "Username must contain only letters, numbers, underscores, dashes, or dots",
+      "string.empty": "Username cannot be empty",
+      "string.min": "Username must be at least 3 characters long",
+      "string.max": "Username cannot exceed 50 characters",
+      "any.required": "Username is required",
+    }),
+  fullName: Joi.string().trim().min(2).max(150).optional().messages({
     "string.min": "Full name must be at least 2 characters long",
-    "any.required": "Full name is required",
+    "string.max": "Full name cannot exceed 150 characters",
+    "string.empty": "Full name cannot be empty",
   }),
-});
+  full_name: Joi.string().trim().min(2).max(150).optional().messages({
+    "string.min": "Full name must be at least 2 characters long",
+    "string.max": "Full name cannot exceed 150 characters",
+    "string.empty": "Full name cannot be empty",
+  }),
+})
+  .or("fullName", "full_name")
+  .messages({
+    "object.missing": "Full name is required (provide fullName or full_name)",
+  });
 
-/** Validates credentials submitted to log in. */
+/**
+ * Validates credentials submitted to log in.
+ */
 export const loginSchema = Joi.object({
-  email: Joi.string().trim().email().max(100).required().messages({
+  email: Joi.string().trim().lowercase().email().max(100).required().messages({
     "string.email": "Email must be a valid email address",
+    "string.empty": "Email cannot be empty",
+    "string.max": "Email cannot exceed 100 characters",
     "any.required": "Email is required",
   }),
-  password: Joi.string().required().messages({
+  password: Joi.string().min(1).max(128).required().messages({
+    "string.empty": "Password cannot be empty",
     "any.required": "Password is required",
   }),
 });
 
-/** Validates profile edits made through the auth routes. */
+/**
+ * Validates profile edits made through the auth routes.
+ */
 export const editProfileSchema = Joi.object({
-  full_name: Joi.string().trim().min(2).max(150).optional(),
-  bio: Joi.string().trim().max(500).allow('').optional(),
-  avatar_url: Joi.string().trim().uri().max(500).allow('').optional(),
-  username: Joi.string().trim().alphanum().min(3).max(50).optional(),
+  full_name: Joi.string().trim().min(2).max(150).optional().messages({
+    "string.min": "Full name must be at least 2 characters long",
+    "string.max": "Full name cannot exceed 150 characters",
+    "string.empty": "Full name cannot be empty",
+  }),
+  bio: Joi.string().trim().max(500).allow("").optional().messages({
+    "string.max": "Bio cannot exceed 500 characters",
+  }),
+  avatar_url: Joi.string().trim().uri().max(500).allow("").optional().messages({
+    "string.uri": "Avatar URL must be a valid URI (e.g. https://...)",
+    "string.max": "Avatar URL cannot exceed 500 characters",
+  }),
+  username: Joi.string()
+    .trim()
+    .pattern(/^[a-zA-Z0-9_.-]+$/)
+    .min(3)
+    .max(50)
+    .optional()
+    .messages({
+      "string.pattern.base":
+        "Username must contain only letters, numbers, underscores, dashes, or dots",
+      "string.min": "Username must be at least 3 characters long",
+      "string.max": "Username cannot exceed 50 characters",
+      "string.empty": "Username cannot be empty",
+    }),
 })
   .min(1)
   .messages({
-    'object.min': 'Provide at least one field to update',
+    "object.min": "Provide at least one field to update",
   });
 
 export default {

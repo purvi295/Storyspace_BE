@@ -11,6 +11,7 @@ const auth_routes_1 = __importDefault(require("./routes/auth.routes"));
 const user_routes_1 = __importDefault(require("./routes/user.routes"));
 const story_routes_1 = __importDefault(require("./routes/story.routes"));
 const comment_routes_1 = __importDefault(require("./routes/comment.routes"));
+const upload_routes_1 = __importDefault(require("./routes/upload.routes"));
 const error_handler_1 = require("./middlewares/error.handler");
 const app = (0, express_1.default)();
 // ==========================================
@@ -37,6 +38,7 @@ app.use("/api/auth", auth_routes_1.default);
 app.use("/api/users", user_routes_1.default);
 app.use("/api/stories", story_routes_1.default);
 app.use("/api/comments", comment_routes_1.default);
+app.use("/api/upload", upload_routes_1.default);
 // ==========================================
 // 4. Error Handling Middlewares
 // ==========================================

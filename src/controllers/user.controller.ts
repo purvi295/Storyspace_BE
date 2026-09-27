@@ -9,12 +9,23 @@ import {
 } from "../utils/api.response";
 
 export class UserController {
+  // Helper to extract a single string target from params
+  private getTargetParam(req: Request): string | null {
+    const raw =
+      req.params.target ||
+      req.params.username ||
+      req.params.user_uuid ||
+      req.params.id;
+    if (!raw) return null;
+    return Array.isArray(raw) ? raw[0] : String(raw);
+  }
+
   // Get public profile by username with follower/following counts
   async getPublicProfile(req: Request, res: Response) {
     try {
-      const { username } = req.params;
+      const username = this.getTargetParam(req);
 
-      if (!username || typeof username !== "string") {
+      if (!username) {
         return sendErrorResponse(res, 400, "Username is required");
       }
 
@@ -49,8 +60,8 @@ export class UserController {
   // Get all user list excluding the admins
   async getAllUsersList(req: Request, res: Response) {
     try {
-      const page = Number(req.query.page);
-      const limit = Number(req.query.limit);
+      const page = req.query.page ? Number(req.query.page) : 1;
+      const limit = req.query.limit ? Number(req.query.limit) : 10;
       const { users, pagination } = await userService.getAllUsers(page, limit);
 
       return sendPaginatedResponse(
@@ -73,7 +84,7 @@ export class UserController {
         return sendErrorResponse(res, 401, "User not authenticated");
       }
 
-      const target = req.params.user_uuid || req.params.id || req.params.username || req.params.target;
+      const target = this.getTargetParam(req);
       if (!target) {
         return sendErrorResponse(res, 400, "Target user identifier is required");
       }
@@ -96,7 +107,7 @@ export class UserController {
         return sendErrorResponse(res, 401, "User not authenticated");
       }
 
-      const target = req.params.user_uuid || req.params.id || req.params.username || req.params.target;
+      const target = this.getTargetParam(req);
       if (!target) {
         return sendErrorResponse(res, 400, "Target user identifier is required");
       }
@@ -112,7 +123,7 @@ export class UserController {
   // GET /api/users/:target/followers - Get user's followers
   async getFollowers(req: Request, res: Response) {
     try {
-      const target = req.params.user_uuid || req.params.id || req.params.username || req.params.target;
+      const target = this.getTargetParam(req);
       if (!target) {
         return sendErrorResponse(res, 400, "Target user identifier is required");
       }
@@ -137,7 +148,7 @@ export class UserController {
   // GET /api/users/:target/following - Get users followed by user
   async getFollowing(req: Request, res: Response) {
     try {
-      const target = req.params.user_uuid || req.params.id || req.params.username || req.params.target;
+      const target = this.getTargetParam(req);
       if (!target) {
         return sendErrorResponse(res, 400, "Target user identifier is required");
       }
@@ -167,7 +178,7 @@ export class UserController {
         return sendErrorResponse(res, 401, "User not authenticated");
       }
 
-      const target = req.params.user_uuid || req.params.id || req.params.username || req.params.target;
+      const target = this.getTargetParam(req);
       if (!target) {
         return sendErrorResponse(res, 400, "Target user identifier is required");
       }

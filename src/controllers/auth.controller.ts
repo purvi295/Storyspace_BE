@@ -7,7 +7,8 @@ export class AuthController {
   // Register new user
   async register(req: Request<{}, unknown, RegisterDto>, res: Response) {
     try {
-      const { email, password, username, fullName } = req.body;
+      const { email, password, username } = req.body;
+      const fullName = req.body.fullName || (req.body as any).full_name;
 
       const result = await authService.register({
         email,

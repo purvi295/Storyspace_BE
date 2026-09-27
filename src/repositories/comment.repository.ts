@@ -19,7 +19,7 @@ export class CommentRepository {
   async findById(id: number): Promise<Comment | null> {
     return this.repository.findOne({
       where: { id },
-      relations: ["user", "story"],
+      relations: { "user": true, "story": true },
     });
   }
 
@@ -30,7 +30,7 @@ export class CommentRepository {
   ): Promise<{ comments: Comment[]; total: number }> {
     const [comments, total] = await this.repository.findAndCount({
       where: { story_uuid },
-      relations: ["user"],
+      relations: { "user": true },
       order: { created_at: "DESC" },
       skip: options.skip,
       take: options.take,

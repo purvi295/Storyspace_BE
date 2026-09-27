@@ -22,5 +22,12 @@ exports.config = {
         name: process.env.DB_NAME || 'node-learning',
         ssl: process.env.DB_SSL === 'true' || !!process.env.DATABASE_URL,
     },
+    storage: {
+        endpoint: process.env.AWS_ENDPOINT_URL_S3 || '',
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
+        region: process.env.AWS_REGION || 'ap-southeast-1',
+        bucket: process.env.NEON_STORAGE_BUCKET || 'story',
+    },
 };
 exports.default = exports.config;

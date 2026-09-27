@@ -10,17 +10,27 @@ const api_error_1 = __importDefault(require("../utils/api.error"));
 /**
  * Middleware to catch 404 Not Found errors for undefined endpoints.
  */
-const notFoundHandler = (req, res, next) => {
+const notFoundHandler = (req, _res, next) => {
     next(api_error_1.default.notFound(`Resource not found: ${req.method} ${req.originalUrl}`));
 };
 exports.notFoundHandler = notFoundHandler;
 /**
  * Global centralized error handler.
  */
-const errorHandler = (err, req, res, next) => {
-    let statusCode = err.statusCode || 500;
+const errorHandler = (err, req, res, _next) => {
+    let statusCode = err.statusCode || err.status || 500;
     let message = err.message || "Internal Server Error";
     const details = err.details;
+    // Handle malformed JSON body errors from express.json()
+    if (err instanceof SyntaxError && "body" in err) {
+        statusCode = 400;
+        message = "Malformed JSON payload in request body";
+    }
+    // Handle PostgreSQL / TypeORM unique violation code 23505
+    if (err.code === "23505") {
+        statusCode = 409;
+        message = "A resource with this identifier or unique attribute already exists";
+    }
     if (statusCode >= 500) {
         console.error(`💥 [Unhandled Server Error] ${req.method} ${req.originalUrl}:`, err);
     }

@@ -1,3 +1,4 @@
+
 import { Request, Response } from "express";
 import { commentService } from "../services/comment.service";
 import {
@@ -70,7 +71,7 @@ export class CommentController {
   }
 
   // GET /api/comments/:id
-  async getCommentById(req: Request<{ id: string }>, res: Response) {
+  async getCommentById(req: Request, res: Response) {
     try {
       const id = Number(req.params.id);
       if (isNaN(id)) {
@@ -86,10 +87,7 @@ export class CommentController {
   }
 
   // PUT /api/comments/:id
-  async updateComment(
-    req: Request<{ id: string }, unknown, UpdateCommentDto>,
-    res: Response
-  ) {
+  async updateComment(req: Request, res: Response) {
     try {
       const user_uuid = req.user?.user_uuid;
       if (!user_uuid) {
@@ -115,7 +113,7 @@ export class CommentController {
   }
 
   // DELETE /api/comments/:id
-  async deleteComment(req: Request<{ id: string }>, res: Response) {
+  async deleteComment(req: Request, res: Response) {
     try {
       const user_uuid = req.user?.user_uuid;
       const userRole = req.user?.role;
