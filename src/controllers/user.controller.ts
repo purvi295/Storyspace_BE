@@ -48,7 +48,14 @@ export class UserController {
         return sendErrorResponse(res, 401, "User not authenticated");
       }
 
-      const user = await userService.updateProfile(req.user.user_uuid, req.body);
+      const updateData = { ...req.body };
+
+      if (req.file) {
+        const uploadResult = await storageService.uploadImage(req.file, "avatars");
+        updateData.avatar_url = uploadResult.url;
+      }
+
+      const user = await userService.updateProfile(req.user.user_uuid, updateData);
 
       return sendApiResponse(res, 200, { user }, "Profile updated successfully");
     } catch (error: any) {

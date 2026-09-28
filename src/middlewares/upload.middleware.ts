@@ -24,13 +24,27 @@ const fileFilter = (
   }
 };
 
-const multerUploader = multer({
+const multerSingleUploader = multer({
   storage,
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB limit
   },
   fileFilter,
 }).single("image");
+
+const multerStoryUploader = multer({
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // 5MB limit
+  },
+  fileFilter,
+}).fields([
+  { name: "image", maxCount: 1 },
+  { name: "coverImage", maxCount: 1 },
+  { name: "cover_image", maxCount: 1 },
+  { name: "cover_image_url", maxCount: 1 },
+  { name: "avatar", maxCount: 1 },
+]);
 
 /**
  * Validates folder query parameter for upload
@@ -45,15 +59,14 @@ export const uploadQuerySchema = Joi.object({
 });
 
 /**
- * Middleware that wraps multer to intercept MulterError and fileFilter errors,
- * converting them to clean, descriptive 400 Bad Request responses.
+ * Middleware for direct /api/upload/image route
  */
 export const uploadSingleImage = (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  multerUploader(req, res, (err: any) => {
+  multerSingleUploader(req, res, (err: any) => {
     if (err) {
       if (err instanceof multer.MulterError) {
         if (err.code === "LIMIT_FILE_SIZE") {
@@ -74,6 +87,51 @@ export const uploadSingleImage = (
       }
       return next(ApiError.badRequest(err.message || "Invalid file upload"));
     }
+    next();
+  });
+};
+
+/**
+ * Optional multer middleware for routes like story creation and profile update,
+ * allowing either JSON body or multipart form-data with an attached image.
+ */
+export const uploadOptionalImage = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  const contentType = req.headers["content-type"] || "";
+  if (!contentType.includes("multipart/form-data")) {
+    return next();
+  }
+
+  multerStoryUploader(req, res, (err: any) => {
+    if (err) {
+      if (err instanceof multer.MulterError) {
+        if (err.code === "LIMIT_FILE_SIZE") {
+          return next(
+            ApiError.badRequest(
+              "File size exceeds the 5MB limit. Please upload a smaller image."
+            )
+          );
+        }
+        return next(ApiError.badRequest(`Upload error: ${err.message}`));
+      }
+      return next(ApiError.badRequest(err.message || "Invalid file upload"));
+    }
+
+    if (req.files) {
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      const uploadedFile =
+        files.image?.[0] ||
+        files.coverImage?.[0] ||
+        files.cover_image?.[0] ||
+        files.avatar?.[0];
+      if (uploadedFile) {
+        req.file = uploadedFile;
+      }
+    }
+
     next();
   });
 };

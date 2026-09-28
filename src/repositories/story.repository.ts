@@ -1,3 +1,4 @@
+import { Brackets } from "typeorm";
 import { AppDataSource } from "../database/data-source";
 import { CreateStoryDto, UpdateStoryDto, StoryQueryDto } from "../dtos/story.dto";
 import { Story } from "../entities/story.entity";
@@ -66,6 +67,8 @@ export class StoryRepository {
     skip: number;
     take: number;
     status?: string;
+    visibility?: string;
+    allowedVisibilities?: string[];
   }): Promise<{ stories: Story[]; total: number }> {
     const queryBuilder = this.repository
       .createQueryBuilder("story")
@@ -75,6 +78,16 @@ export class StoryRepository {
     if (options.status) {
       queryBuilder.andWhere("story.status = :status", {
         status: options.status,
+      });
+    }
+
+    if (options.visibility) {
+      queryBuilder.andWhere("story.visibility = :visibility", {
+        visibility: options.visibility,
+      });
+    } else if (options.allowedVisibilities && options.allowedVisibilities.length > 0) {
+      queryBuilder.andWhere("story.visibility IN (:...allowedVisibilities)", {
+        allowedVisibilities: options.allowedVisibilities,
       });
     }
 
@@ -89,6 +102,7 @@ export class StoryRepository {
 
   /**
    * Find all stories with filters and pagination (for authenticated users)
+   * Enforces that followers_only stories are only visible to the author or followers of the author.
    */
   async findAllWithFilters(options: {
     skip: number;
@@ -96,10 +110,58 @@ export class StoryRepository {
     status?: string;
     visibility?: string;
     author?: string;
+    currentUserUuid?: string;
+    isAdmin?: boolean;
   }): Promise<{ stories: Story[]; total: number }> {
     const queryBuilder = this.repository
       .createQueryBuilder("story")
       .orderBy("story.created_at", "DESC");
+
+    if (options.isAdmin) {
+      // Admins have full access, only explicit filters will be applied below
+    } else if (options.currentUserUuid) {
+      queryBuilder.andWhere(
+        new Brackets((qb) => {
+          qb.where("story.user_uuid = :currentUserUuid", {
+            currentUserUuid: options.currentUserUuid,
+          }).orWhere(
+            new Brackets((qbPublished) => {
+              qbPublished
+                .where("story.status = :publishedStatus", {
+                  publishedStatus: STORY_STATUS.PUBLISHED,
+                })
+                .andWhere(
+                  new Brackets((qbVis) => {
+                    qbVis
+                      .where("story.visibility = :publicVisibility", {
+                        publicVisibility: STORY_VISIBILITY.PUBLIC,
+                      })
+                      .orWhere(
+                        `story.visibility = :followersOnlyVisibility AND EXISTS (
+                          SELECT 1 FROM follows f 
+                          WHERE f.follower_id = :currentUserUuid 
+                          AND f.following_id = story.user_uuid
+                        )`,
+                        {
+                          followersOnlyVisibility: STORY_VISIBILITY.FOLLOWERS_ONLY,
+                          currentUserUuid: options.currentUserUuid,
+                        }
+                      );
+                  })
+                );
+            })
+          );
+        })
+      );
+    } else {
+      queryBuilder
+        .andWhere("story.status = :publishedStatus", {
+          publishedStatus: STORY_STATUS.PUBLISHED,
+        })
+        .andWhere("story.visibility = :publicVisibility", {
+          publicVisibility: STORY_VISIBILITY.PUBLIC,
+        });
+    }
 
     if (options.status) {
       queryBuilder.andWhere("story.status = :status", {

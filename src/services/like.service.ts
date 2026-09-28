@@ -1,9 +1,30 @@
 import { likeRepository } from "../repositories/like.repository";
 import { storyRepository } from "../repositories/story.repository";
+import { followRepository } from "../repositories/follow.repository";
 import ApiError from "../utils/api.error";
 import { PaginationMeta } from "../utils/api.response";
+import { STORY_STATUS, STORY_VISIBILITY, ROLES } from "../config/constants";
 
 export class LikeService {
+  private async checkStoryAccess(story: any, user_uuid?: string, userRole?: string) {
+    const isAuthor = Boolean(user_uuid && user_uuid === story.user_uuid);
+    const isAdmin = userRole === ROLES.ADMIN;
+
+    if (story.status !== STORY_STATUS.PUBLISHED && !isAuthor && !isAdmin) {
+      throw ApiError.notFound("Story not found");
+    }
+
+    if (story.visibility === STORY_VISIBILITY.FOLLOWERS_ONLY && !isAuthor && !isAdmin) {
+      if (!user_uuid) {
+        throw ApiError.forbidden("This story is private and only available to followers. Please sign in.");
+      }
+      const follow = await followRepository.findFollow(user_uuid, story.user_uuid);
+      if (!follow) {
+        throw ApiError.forbidden("This story is private and only available to followers of this author.");
+      }
+    }
+  }
+
   /**
    * Helper to resolve story by uuid, slug, or numeric id
    */
@@ -36,6 +57,7 @@ export class LikeService {
    */
   async likeStory(storyIdentifier: string, user_uuid: string) {
     const story = await this.resolveStory(storyIdentifier);
+    await this.checkStoryAccess(story, user_uuid);
 
     const existingLike = await likeRepository.findLike(
       story.story_uuid,
@@ -68,6 +90,7 @@ export class LikeService {
    */
   async unlikeStory(storyIdentifier: string, user_uuid: string) {
     const story = await this.resolveStory(storyIdentifier);
+    await this.checkStoryAccess(story, user_uuid);
 
     const existingLike = await likeRepository.findLike(
       story.story_uuid,
@@ -98,6 +121,7 @@ export class LikeService {
    */
   async toggleLike(storyIdentifier: string, user_uuid: string) {
     const story = await this.resolveStory(storyIdentifier);
+    await this.checkStoryAccess(story, user_uuid);
 
     const existingLike = await likeRepository.findLike(
       story.story_uuid,
@@ -125,8 +149,9 @@ export class LikeService {
   /**
    * Get paginated likes and total count for a story
    */
-  async getStoryLikes(storyIdentifier: string, pageInput = 1, limitInput = 10) {
+  async getStoryLikes(storyIdentifier: string, pageInput = 1, limitInput = 10, viewerUuid?: string, userRole?: string) {
     const story = await this.resolveStory(storyIdentifier);
+    await this.checkStoryAccess(story, viewerUuid, userRole);
 
     const page = Number.isInteger(pageInput) && pageInput > 0 ? pageInput : 1;
     const limit =
@@ -177,6 +202,7 @@ export class LikeService {
    */
   async getStoryLikeStatus(storyIdentifier: string, user_uuid: string) {
     const story = await this.resolveStory(storyIdentifier);
+    await this.checkStoryAccess(story, user_uuid);
 
     const [like, likesCount] = await Promise.all([
       likeRepository.findLike(story.story_uuid, user_uuid),

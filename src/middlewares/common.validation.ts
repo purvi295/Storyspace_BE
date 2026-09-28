@@ -8,12 +8,12 @@ import Joi from "joi";
  */
 export const paginationQuerySchema = Joi.object({
   page: Joi.number().integer().min(1).default(1).messages({
-    "number.base": "Page must be a number",
+    "number.base": "Page must be a valid number",
     "number.integer": "Page must be an integer",
     "number.min": "Page must be at least 1",
   }),
   limit: Joi.number().integer().min(1).max(100).default(10).messages({
-    "number.base": "Limit must be a number",
+    "number.base": "Limit must be a valid number",
     "number.integer": "Limit must be an integer",
     "number.min": "Limit must be at least 1",
     "number.max": "Limit cannot exceed 100",
@@ -44,9 +44,10 @@ export const usernameParamSchema = Joi.object({
     .required()
     .messages({
       "string.pattern.base":
-        "Username must contain only letters, numbers, underscores, dashes, or dots",
+        "Username can only contain letters, numbers, underscores (_), hyphens (-), and periods (.)",
       "string.min": "Username must be at least 3 characters long",
       "string.max": "Username cannot exceed 50 characters",
+      "string.empty": "Username cannot be empty",
       "any.required": "Username path parameter is required",
     }),
 });

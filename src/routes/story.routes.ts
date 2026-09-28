@@ -4,7 +4,8 @@ import { storyController } from "../controllers/story.controller";
 import { likeController } from "../controllers/like.controller";
 import { commentController } from "../controllers/comment.controller";
 
-import { authenticateToken } from "../middlewares/auth.middleware";
+import { authenticateToken, optionalAuthenticateToken } from "../middlewares/auth.middleware";
+import { uploadOptionalImage } from "../middlewares/upload.middleware";
 import validate from "../middlewares/validate.middleware";
 import { usernameParamSchema } from "../middlewares/user.validation";
 import {
@@ -23,7 +24,7 @@ import { createCommentSchema } from "../middlewares/comment.validation";
 const router = Router();
 
 // ==========================================
-// PUBLIC ROUTES (No authentication required)
+// PUBLIC ROUTES (Optional or no authentication required)
 // ==========================================
 
 // GET /api/stories/public - Get all public published stories
@@ -33,9 +34,10 @@ router.get(
   (req, res) => storyController.getPublicStories(req, res)
 );
 
-// GET /api/stories/user/:username - Get stories by a specific user
+// GET /api/stories/user/:username - Get stories by a specific user (filters followers-only if not followed)
 router.get(
   "/user/:username",
+  optionalAuthenticateToken,
   validate({
     params: usernameParamSchema,
     query: userStoriesQuerySchema,
@@ -43,9 +45,10 @@ router.get(
   (req, res) => storyController.getStoriesByUser(req, res)
 );
 
-// GET /api/stories/slug/:slug - Get a single story by slug
+// GET /api/stories/slug/:slug - Get a single story by slug (checks followers-only permissions)
 router.get(
   "/slug/:slug",
+  optionalAuthenticateToken,
   validate({ params: storySlugParamSchema }),
   (req, res) => storyController.getStoryBySlug(req, res)
 );
@@ -54,10 +57,11 @@ router.get(
 // PROTECTED STORY MANAGEMENT ROUTES
 // ==========================================
 
-// POST /api/stories/create - Create a new story
+// POST /api/stories/create - Create a new story (supports JSON or multipart with image)
 router.post(
   "/create",
   authenticateToken,
+  uploadOptionalImage,
   validate({ body: createStorySchema }),
   (req, res) => storyController.createStory(req, res)
 );
@@ -116,6 +120,7 @@ router.post(
 // GET /api/stories/:identifier/likes - Get users who liked a story
 router.get(
   "/:identifier/likes",
+  optionalAuthenticateToken,
   validate({
     params: storyIdentifierParamSchema,
     query: storyInteractionQuerySchema,
@@ -145,6 +150,7 @@ router.post(
 // GET /api/stories/:identifier/comments - Get all comments on a story
 router.get(
   "/:identifier/comments",
+  optionalAuthenticateToken,
   validate({
     params: storyIdentifierParamSchema,
     query: storyInteractionQuerySchema,
@@ -156,10 +162,11 @@ router.get(
 // STORY MUTATION ROUTES BY SLUG
 // ==========================================
 
-// PUT /api/stories/:slug - Update a story
+// PUT /api/stories/:slug - Update a story (supports JSON or multipart with image)
 router.put(
   "/:slug",
   authenticateToken,
+  uploadOptionalImage,
   validate({
     params: storySlugParamSchema,
     body: updateStorySchema,

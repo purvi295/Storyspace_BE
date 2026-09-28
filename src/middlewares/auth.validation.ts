@@ -6,7 +6,7 @@ import Joi from "joi";
  */
 export const registerSchema = Joi.object({
   email: Joi.string().trim().lowercase().email().max(100).required().messages({
-    "string.email": "Email must be a valid email address",
+    "string.email": "Email must be a valid email address (e.g. user@example.com)",
     "string.empty": "Email cannot be empty",
     "string.max": "Email cannot exceed 100 characters",
     "any.required": "Email is required",
@@ -25,7 +25,7 @@ export const registerSchema = Joi.object({
     .required()
     .messages({
       "string.pattern.base":
-        "Username must contain only letters, numbers, underscores, dashes, or dots",
+        "Username can only contain letters, numbers, underscores (_), hyphens (-), and periods (.)",
       "string.empty": "Username cannot be empty",
       "string.min": "Username must be at least 3 characters long",
       "string.max": "Username cannot exceed 50 characters",
@@ -59,6 +59,8 @@ export const loginSchema = Joi.object({
   }),
   password: Joi.string().min(1).max(128).required().messages({
     "string.empty": "Password cannot be empty",
+    "string.min": "Password must be at least 1 character long",
+    "string.max": "Password cannot exceed 128 characters",
     "any.required": "Password is required",
   }),
 });
@@ -76,7 +78,7 @@ export const editProfileSchema = Joi.object({
     "string.max": "Bio cannot exceed 500 characters",
   }),
   avatar_url: Joi.string().trim().uri().max(500).allow("").optional().messages({
-    "string.uri": "Avatar URL must be a valid URI (e.g. https://...)",
+    "string.uri": "Avatar URL must be a valid URI (e.g. https://example.com/avatar.png)",
     "string.max": "Avatar URL cannot exceed 500 characters",
   }),
   username: Joi.string()
@@ -87,7 +89,7 @@ export const editProfileSchema = Joi.object({
     .optional()
     .messages({
       "string.pattern.base":
-        "Username must contain only letters, numbers, underscores, dashes, or dots",
+        "Username can only contain letters, numbers, underscores (_), hyphens (-), and periods (.)",
       "string.min": "Username must be at least 3 characters long",
       "string.max": "Username cannot exceed 50 characters",
       "string.empty": "Username cannot be empty",
@@ -95,7 +97,7 @@ export const editProfileSchema = Joi.object({
 })
   .min(1)
   .messages({
-    "object.min": "Provide at least one field to update",
+    "object.min": "Please provide at least one field to update",
   });
 
 export default {

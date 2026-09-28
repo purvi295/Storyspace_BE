@@ -8,6 +8,7 @@ import userRoutes from "./routes/user.routes";
 import storyRoutes from "./routes/story.routes";
 import commentRoutes from "./routes/comment.routes";
 import uploadRoutes from "./routes/upload.routes";
+import adminRoutes from "./routes/admin.routes";
 import { notFoundHandler, errorHandler } from "./middlewares/error.handler";
 
 const app: Application = express();
@@ -39,6 +40,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/stories", storyRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/upload", uploadRoutes);
+app.use("/api/admin", adminRoutes);
 
 // ==========================================
 // 4. Error Handling Middlewares

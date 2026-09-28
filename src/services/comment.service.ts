@@ -1,11 +1,31 @@
 import { commentRepository } from "../repositories/comment.repository";
 import { storyRepository } from "../repositories/story.repository";
+import { followRepository } from "../repositories/follow.repository";
 import { CreateCommentDto, UpdateCommentDto } from "../dtos/comment.dto";
 import ApiError from "../utils/api.error";
-import { ROLES } from "../config/constants";
+import { STORY_STATUS, STORY_VISIBILITY, ROLES } from "../config/constants";
 import { PaginationMeta } from "../utils/api.response";
 
 export class CommentService {
+  private async checkStoryAccess(story: any, user_uuid?: string, userRole?: string) {
+    const isAuthor = Boolean(user_uuid && user_uuid === story.user_uuid);
+    const isAdmin = userRole === ROLES.ADMIN;
+
+    if (story.status !== STORY_STATUS.PUBLISHED && !isAuthor && !isAdmin) {
+      throw ApiError.notFound("Story not found");
+    }
+
+    if (story.visibility === STORY_VISIBILITY.FOLLOWERS_ONLY && !isAuthor && !isAdmin) {
+      if (!user_uuid) {
+        throw ApiError.forbidden("This story is private and only available to followers. Please sign in.");
+      }
+      const follow = await followRepository.findFollow(user_uuid, story.user_uuid);
+      if (!follow) {
+        throw ApiError.forbidden("This story is private and only available to followers of this author.");
+      }
+    }
+  }
+
   /**
    * Helper to resolve story by uuid, slug, or numeric id
    */
@@ -39,9 +59,11 @@ export class CommentService {
   async addComment(
     storyIdentifier: string,
     user_uuid: string,
-    data: CreateCommentDto
+    data: CreateCommentDto,
+    userRole?: string
   ) {
     const story = await this.resolveStory(storyIdentifier);
+    await this.checkStoryAccess(story, user_uuid, userRole);
 
     const comment = await commentRepository.createComment({
       story_uuid: story.story_uuid,
@@ -63,9 +85,12 @@ export class CommentService {
   async getStoryComments(
     storyIdentifier: string,
     pageInput = 1,
-    limitInput = 10
+    limitInput = 10,
+    viewerUuid?: string,
+    userRole?: string
   ) {
     const story = await this.resolveStory(storyIdentifier);
+    await this.checkStoryAccess(story, viewerUuid, userRole);
 
     const page = Number.isInteger(pageInput) && pageInput > 0 ? pageInput : 1;
     const limit =

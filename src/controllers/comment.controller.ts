@@ -28,7 +28,8 @@ export class CommentController {
       const comment = await commentService.addComment(
         identifier,
         user_uuid,
-        req.body
+        req.body,
+        req.user?.role
       );
 
       return sendApiResponse(res, 201, comment, "Comment added successfully");
@@ -55,7 +56,9 @@ export class CommentController {
       const result = await commentService.getStoryComments(
         identifier,
         page,
-        limit
+        limit,
+        req.user?.user_uuid,
+        req.user?.role
       );
 
       return sendPaginatedResponse(

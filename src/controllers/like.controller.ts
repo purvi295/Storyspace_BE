@@ -95,7 +95,13 @@ export class LikeController {
       const page = req.query.page ? Number(req.query.page) : 1;
       const limit = req.query.limit ? Number(req.query.limit) : 10;
 
-      const result = await likeService.getStoryLikes(identifier, page, limit);
+      const result = await likeService.getStoryLikes(
+        identifier,
+        page,
+        limit,
+        req.user?.user_uuid,
+        req.user?.role
+      );
 
       return sendPaginatedResponse(
         res,

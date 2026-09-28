@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { AppDataSource } from "../database/data-source";
 import { User } from "../entities/user.entity";
 import { EditAuthProfileDto, LoginDto, RegisterDto } from "../dtos/auth.dto";
+import ApiError from "../utils/api.error";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-in-production";
@@ -51,13 +52,18 @@ export class AuthService {
   async register(data: RegisterDto): Promise<{ user: Partial<User>; token: string }> {
     const { email, password, username, fullName } = data;
 
-    // Check if user already exists
+    // Check if email or username already exists
     const existingUser = await this.userRepository.findOne({
       where: [{ email }, { username }],
     });
 
     if (existingUser) {
-      throw new Error("User with this email or username already exists");
+      if (existingUser.email === email) {
+        throw new ApiError(409, "An account with this email address already exists");
+      }
+      if (existingUser.username === username) {
+        throw new ApiError(409, "This username is already taken");
+      }
     }
 
     // Hash password
@@ -92,14 +98,14 @@ export class AuthService {
     });
 
     if (!user) {
-      throw new Error("Invalid credentials");
+      throw ApiError.unauthorized("Invalid email or password");
     }
 
     // Verify password
     const isPasswordValid = await this.comparePassword(password, user.password);
 
     if (!isPasswordValid) {
-      throw new Error("Invalid credentials");
+      throw ApiError.unauthorized("Invalid email or password");
     }
 
     // Generate token
@@ -124,21 +130,21 @@ export class AuthService {
     const user = await this.userRepository.findOne({ where: { user_uuid: userUuid } });
 
     if (!user) {
-      throw new Error("User not found");
+      throw ApiError.notFound("User not found");
     }
-
-    // Update only the allowed fields
-    Object.assign(user, updateData);
 
     // If username is changing, verify it doesn't conflict with another user
     if (updateData.username && user.username !== updateData.username) {
       const existingUser = await this.userRepository.findOne({
         where: { username: updateData.username },
       });
-      if (existingUser) {
-        throw new Error("Username already taken");
+      if (existingUser && existingUser.user_uuid !== userUuid) {
+        throw new ApiError(409, "This username is already taken");
       }
     }
+
+    // Update only the allowed fields
+    Object.assign(user, updateData);
 
     await this.userRepository.save(user);
     return user;

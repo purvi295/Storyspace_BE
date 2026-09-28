@@ -9,17 +9,30 @@ export const updateProfileSchema = Joi.object({
     "string.max": "Full name cannot exceed 150 characters",
     "string.empty": "Full name cannot be empty",
   }),
+  username: Joi.string()
+    .trim()
+    .pattern(/^[a-zA-Z0-9_.-]+$/)
+    .min(3)
+    .max(50)
+    .optional()
+    .messages({
+      "string.pattern.base":
+        "Username can only contain letters, numbers, underscores (_), hyphens (-), and periods (.)",
+      "string.min": "Username must be at least 3 characters long",
+      "string.max": "Username cannot exceed 50 characters",
+      "string.empty": "Username cannot be empty",
+    }),
   bio: Joi.string().trim().max(500).allow("").optional().messages({
     "string.max": "Bio cannot exceed 500 characters",
   }),
   avatar_url: Joi.string().trim().uri().max(500).allow("").optional().messages({
-    "string.uri": "Avatar URL must be a valid URL (e.g. https://...)",
+    "string.uri": "Avatar URL must be a valid URL (e.g. https://example.com/avatar.png)",
     "string.max": "Avatar URL cannot exceed 500 characters",
   }),
 })
   .min(1)
   .messages({
-    "object.min": "Provide at least one field to update",
+    "object.min": "Please provide at least one field to update",
   });
 
 /**
@@ -27,17 +40,19 @@ export const updateProfileSchema = Joi.object({
  */
 export const userListQuerySchema = Joi.object({
   page: Joi.number().integer().min(1).default(1).messages({
-    "number.base": "Page must be a number",
+    "number.base": "Page must be a valid number",
     "number.integer": "Page must be an integer",
     "number.min": "Page must be at least 1",
   }),
   limit: Joi.number().integer().min(1).max(100).default(10).messages({
-    "number.base": "Limit must be a number",
+    "number.base": "Limit must be a valid number",
     "number.integer": "Limit must be an integer",
     "number.min": "Limit must be at least 1",
     "number.max": "Limit cannot exceed 100",
   }),
-  search: Joi.string().trim().max(100).optional(),
+  search: Joi.string().trim().max(100).optional().messages({
+    "string.max": "Search query cannot exceed 100 characters",
+  }),
 });
 
 /**
@@ -52,7 +67,7 @@ export const usernameParamSchema = Joi.object({
     .required()
     .messages({
       "string.pattern.base":
-        "Username must contain only letters, numbers, underscores, dashes, or dots",
+        "Username can only contain letters, numbers, underscores (_), hyphens (-), and periods (.)",
       "string.min": "Username must be at least 3 characters long",
       "string.max": "Username cannot exceed 50 characters",
       "string.empty": "Username cannot be empty",

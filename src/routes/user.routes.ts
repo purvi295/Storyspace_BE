@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { userController } from "../controllers/user.controller";
 import { authenticateToken } from "../middlewares/auth.middleware";
+import { uploadOptionalImage } from "../middlewares/upload.middleware";
 import validate from "../middlewares/validate.middleware";
 import {
   updateProfileSchema,
@@ -23,6 +24,7 @@ router.get(
 router.put(
   "/profile",
   authenticateToken,
+  uploadOptionalImage,
   validate(updateProfileSchema),
   userController.updateProfile.bind(userController)
 );

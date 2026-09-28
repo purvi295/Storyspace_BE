@@ -6,9 +6,10 @@ import {
 } from "../dtos/story.dto";
 import { storyRepository } from "../repositories/story.repository";
 import { userRepository } from "../repositories/user.repository";
+import { followRepository } from "../repositories/follow.repository";
 import { slugify, generateUniqueSlug } from "../utils/slugify";
 import ApiError from "../utils/api.error";
-import { STORY_STATUS } from "../config/constants";
+import { STORY_STATUS, STORY_VISIBILITY, ROLES } from "../config/constants";
 
 export class StoryService {
   static async createStory(user_uuid: string, storyData: CreateStoryDto) {
@@ -73,27 +74,51 @@ export class StoryService {
 
   /**
    * Get stories by a specific user (user-wise stories)
-   * Public endpoint - anyone can view a user's published stories
+   * Enforces visibility: non-followers only see public stories.
    */
-  static async getStoriesByUser(username: string, query: StoryQueryDto) {
+  static async getStoriesByUser(username: string, query: StoryQueryDto, viewerUuid?: string, viewerRole?: string) {
     // Find user by username
     const user = await userRepository.findByUsername(username);
     if (!user) {
-      throw new Error("User not found");
+      throw ApiError.notFound("User not found");
     }
 
     const page = query.page && query.page > 0 ? query.page : 1;
     const limit = query.limit && query.limit > 0 ? Math.min(query.limit, 100) : 10;
     const skip = (page - 1) * limit;
 
-    // For public access, only show published stories
-    const status = query.status || STORY_STATUS.PUBLISHED;
+    const isAuthor = Boolean(viewerUuid && viewerUuid === user.user_uuid);
+    const isAdmin = viewerRole === ROLES.ADMIN;
+    let isFollower = false;
+    if (viewerUuid && !isAuthor && !isAdmin) {
+      const follow = await followRepository.findFollow(viewerUuid, user.user_uuid);
+      isFollower = Boolean(follow);
+    }
+
+    // Only author, confirmed followers, or admin can see followers_only stories
+    const canSeeFollowersOnly = isAuthor || isFollower || isAdmin;
+
+    let allowedVisibilities: string[];
+    if (canSeeFollowersOnly) {
+      if (query.visibility) {
+        allowedVisibilities = [query.visibility];
+      } else {
+        allowedVisibilities = [STORY_VISIBILITY.PUBLIC, STORY_VISIBILITY.FOLLOWERS_ONLY];
+      }
+    } else {
+      // Non-followers and unauthenticated viewers can ONLY see public stories
+      allowedVisibilities = [STORY_VISIBILITY.PUBLIC];
+    }
+
+    // Only author or admin can see non-published stories (e.g. draft, submitted)
+    const status = (isAuthor || isAdmin) && query.status ? query.status : STORY_STATUS.PUBLISHED;
 
     const { stories, total } = await storyRepository.findStoriesByUser({
       user_uuid: user.user_uuid,
       skip,
       take: limit,
       status,
+      allowedVisibilities,
     });
 
     return {
@@ -116,11 +141,14 @@ export class StoryService {
 
   /**
    * Get all stories with filters (for authenticated users)
+   * Follower-only stories are filtered so users only see stories from authors they follow (or themselves).
    */
-  static async getAllStories(query: StoryQueryDto) {
+  static async getAllStories(query: StoryQueryDto, currentUserUuid?: string, userRole?: string) {
     const page = query.page && query.page > 0 ? query.page : 1;
     const limit = query.limit && query.limit > 0 ? Math.min(query.limit, 100) : 10;
     const skip = (page - 1) * limit;
+
+    const isAdmin = userRole === ROLES.ADMIN;
 
     const { stories, total } = await storyRepository.findAllWithFilters({
       skip,
@@ -128,6 +156,8 @@ export class StoryService {
       status: query.status,
       visibility: query.visibility,
       author: query.author,
+      currentUserUuid: isAdmin ? undefined : currentUserUuid,
+      isAdmin,
     });
 
     return {
@@ -145,12 +175,34 @@ export class StoryService {
 
   /**
    * Get a single story by slug
+   * Enforces that followers_only stories are only accessible to followers, author, or admin.
    */
-  static async getStoryBySlug(slug: string) {
+  static async getStoryBySlug(slug: string, viewerUuid?: string, viewerRole?: string) {
     const story = await storyRepository.findBySlug(slug);
     if (!story) {
-      throw new Error("Story not found");
+      throw ApiError.notFound("Story not found");
     }
+
+    const isAuthor = Boolean(viewerUuid && viewerUuid === story.user_uuid);
+    const isAdmin = viewerRole === ROLES.ADMIN;
+
+    // Only the author or admin can see non-published stories (e.g. draft, submitted, rejected)
+    if (story.status !== STORY_STATUS.PUBLISHED && !isAuthor && !isAdmin) {
+      throw ApiError.notFound("Story not found");
+    }
+
+    // If the story is followers_only, check access
+    if (story.visibility === STORY_VISIBILITY.FOLLOWERS_ONLY && !isAuthor && !isAdmin) {
+      if (!viewerUuid) {
+        throw ApiError.forbidden("This story is private and only available to followers. Please sign in.");
+      }
+
+      const follow = await followRepository.findFollow(viewerUuid, story.user_uuid);
+      if (!follow) {
+        throw ApiError.forbidden("This story is private and only available to followers of this author.");
+      }
+    }
+
     return story;
   }
 

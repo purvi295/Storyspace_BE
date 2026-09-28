@@ -212,6 +212,17 @@ export class FollowService {
    */
   async isFollowing(followerUuid: string, targetIdentifier: string) {
     const targetUser = await this.resolveTargetUser(targetIdentifier);
+    
+    if (followerUuid === targetUser.user_uuid) {
+      return {
+        follower_uuid: followerUuid,
+        target_uuid: targetUser.user_uuid,
+        target_username: targetUser.username,
+        isFollowing: false,
+        isSelf: true,
+      };
+    }
+
     const follow = await followRepository.findFollow(
       followerUuid,
       targetUser.user_uuid
@@ -222,6 +233,7 @@ export class FollowService {
       target_uuid: targetUser.user_uuid,
       target_username: targetUser.username,
       isFollowing: !!follow,
+      isSelf: false,
     };
   }
 }
