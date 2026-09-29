@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { authService } from "../services/auth.service";
-import { EditAuthProfileDto, LoginDto, RegisterDto } from "../dtos/auth.dto";
+import { LoginDto, RegisterDto } from "../dtos/auth.dto";
 import { sendApiResponse, sendErrorResponse } from "../utils/api.response";
 
 export class AuthController {
@@ -58,18 +58,16 @@ export class AuthController {
     }
   }
 
-  async editProfile(req: Request<{}, unknown, EditAuthProfileDto>, res: Response) {
+  // Logout user
+  async logout(req: Request, res: Response) {
     try {
       if (!req.user) {
         return sendErrorResponse(res, 401, "User not authenticated");
       }
 
-      const user = await authService.editProfile(req.user.user_uuid, req.body);
-      const { password, ...userWithoutPassword } = user;
-
-      return sendApiResponse(res, 200, { user: userWithoutPassword }, "Profile updated successfully");
+      return sendApiResponse(res, 200, null, "User logged out successfully");
     } catch (error: any) {
-      return sendErrorResponse(res, error.statusCode || 500, error.message);
+      return sendErrorResponse(res, 500, error.message);
     }
   }
 }

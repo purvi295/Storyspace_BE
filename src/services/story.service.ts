@@ -20,7 +20,7 @@ export class StoryService {
       const existingStory = await storyRepository.findByTitle(title);
 
       if (existingStory) {
-        throw new Error("Story with this title already exists");
+        throw ApiError.conflict("Story with this title already exists");
       }
       // Auto-generate slug from title if not provided
       let slug = storyData.slug || slugify(storyData.title);
@@ -240,14 +240,14 @@ export class StoryService {
   static async updateStory(story: Story, storyData: UpdateStoryDto, user_uuid: string) {
     // Check if the user is the author of the story
     if (story.user_uuid !== user_uuid) {
-      throw new Error("You are not authorized to update this story");
+      throw ApiError.forbidden("You are not authorized to update this story");
     }
 
     // If title is being updated, check for duplicate
     if (storyData.title && storyData.title !== story.title) {
       const existingStory = await storyRepository.findByTitle(storyData.title);
       if (existingStory && existingStory.story_uuid !== story.story_uuid) {
-        throw new Error("Story with this title already exists");
+        throw ApiError.conflict("Story with this title already exists");
       }
 
       // Auto-generate new slug if title changes
@@ -267,7 +267,7 @@ export class StoryService {
   static async deleteStory(story: Story, user_uuid: string) {
     // Check if the user is the author of the story
     if (story.user_uuid !== user_uuid) {
-      throw new Error("You are not authorized to delete this story");
+      throw ApiError.forbidden("You are not authorized to delete this story");
     }
 
     await storyRepository.delete(story);

@@ -5,7 +5,6 @@ import validate from "../middlewares/validate.middleware";
 import {
   loginSchema,
   registerSchema,
-  editProfileSchema,
 } from "../middlewares/auth.validation";
 
 const router = Router();
@@ -24,15 +23,14 @@ router.post(
   authController.login.bind(authController),
 );
 
+// POST /api/auth/logout - Logout user
+router.post(
+  "/logout",
+  authenticateToken,
+  authController.logout.bind(authController),
+);
+
 // GET /api/auth/me - Get current authenticated user profile
 router.get("/me", authenticateToken, authController.me.bind(authController));
-
-// POST /api/auth/edit-profile - Update user profile
-router.post(
-  "/edit-profile",
-  authenticateToken,
-  validate(editProfileSchema),
-  authController.editProfile.bind(authController),
-);
 
 export default router;

@@ -22,7 +22,6 @@ const startServer = async () => {
       console.log(`=========================================`);
       console.log(`🚀 API Server running on port ${PORT}`);
       console.log(`📡 Environment: ${config.nodeEnv}`);
-      console.log(`🔗 Health check: http://localhost:${PORT}/api/health`);
       console.log(`=========================================`);
     });
   } catch (error) {

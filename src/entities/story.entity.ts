@@ -78,7 +78,7 @@ export class Story {
   // --- Relations ---
   @ManyToOne(() => User, { onDelete: "CASCADE" })
   @JoinColumn({ name: "user_uuid", referencedColumnName: "user_uuid" })
-  author: User;
+  creator: User;
 
   @OneToMany(() => Comment, (comment) => comment.story)
   comments: Comment[];

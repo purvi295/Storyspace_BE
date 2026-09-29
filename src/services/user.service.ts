@@ -2,7 +2,7 @@ import { ROLES } from "../config/constants";
 import { UpdateUserProfileDto } from "../dtos/user.dto";
 import { userRepository } from "../repositories/user.repository";
 import { followRepository } from "../repositories/follow.repository";
-
+import ApiError from "../utils/api.error";
 
 export class UserService {
   /** Return a public profile without the password hash. */
@@ -10,7 +10,7 @@ export class UserService {
     const user = await userRepository.findByUsername(username);
 
     if (!user) {
-      throw new Error("User not found");
+      throw ApiError.notFound("User not found");
     }
 
     const [followerCount, followingCount] = await Promise.all([
@@ -27,7 +27,7 @@ export class UserService {
     const updatedUser = await userRepository.updateProfile(userUuid, data);
 
     if (!updatedUser) {
-      throw new Error("User not found");
+      throw ApiError.notFound("User not found");
     }
 
     const { password, ...userWithoutPassword } = updatedUser;

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { UpdateUserProfileDto } from "../dtos/user.dto";
 import { userService } from "../services/user.service";
 import { followService } from "../services/follow.service";
+import { storageService } from "../services/storage.service";
 import {
   sendApiResponse,
   sendErrorResponse,

@@ -58,7 +58,7 @@ export class User {
   // --- Relations ---
 
   // One User can write many Stories
-  @OneToMany(() => Story, (story) => story.author)
+  @OneToMany(() => Story, (story) => story.creator)
   stories: Story[];
 
   // One User can write many Comments

@@ -20,20 +20,9 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// ==========================================
-// 2. Health Check Endpoint
-// ==========================================
-app.get("/api/health", (req: Request, res: Response) => {
-  res.status(200).json({
-    success: true,
-    status: "healthy",
-    message: "API is running smoothly",
-    timestamp: new Date().toISOString(),
-  });
-});
 
 // ==========================================
-// 3. Application Routes
+// 2. Application Routes
 // ==========================================
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
@@ -43,7 +32,7 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/admin", adminRoutes);
 
 // ==========================================
-// 4. Error Handling Middlewares
+// 3. Error Handling Middlewares
 // ==========================================
 app.use(notFoundHandler);
 app.use(errorHandler);

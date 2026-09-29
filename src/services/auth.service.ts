@@ -1,13 +1,13 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { User } from "../entities/user.entity";
-import { EditAuthProfileDto, LoginDto, RegisterDto } from "../dtos/auth.dto";
+import { LoginDto, RegisterDto } from "../dtos/auth.dto";
 import { authRepository } from "../repositories/auth.repository";
 import ApiError from "../utils/api.error";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-in-production";
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "7d";
+const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1d";
 
 export class AuthService {
   // Hash password
@@ -111,30 +111,6 @@ export class AuthService {
   // Get user by its UUID primary key
   async getUserByUuid(user_uuid: string): Promise<User | null> {
     return authRepository.findByUuid(user_uuid);
-  }
-
-  async editProfile(
-    userUuid: string,
-    updateData: EditAuthProfileDto,
-  ): Promise<User> {
-    const user = await authRepository.findByUuid(userUuid);
-
-    if (!user) {
-      throw ApiError.notFound("User not found");
-    }
-
-    // If username is changing, verify it doesn't conflict with another user
-    if (updateData.username && user.username !== updateData.username) {
-      const existingUser = await authRepository.findByUsername(updateData.username);
-      if (existingUser && existingUser.user_uuid !== userUuid) {
-        throw new ApiError(409, "This username is already taken by another user");
-      }
-    }
-
-    Object.assign(user, updateData);
-
-    await authRepository.save(user);
-    return user;
   }
 }
 

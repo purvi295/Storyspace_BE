@@ -26,9 +26,6 @@ export class AdminService {
       totalLikes,
       publishedStories,
       draftStories,
-      submittedStories,
-      rejectedStories,
-      approvedStories,
     ] = await Promise.all([
       this.userRepository.count(),
       this.storyRepository.count(),
@@ -36,9 +33,6 @@ export class AdminService {
       this.likeRepository.count(),
       this.storyRepository.count({ where: { status: STORY_STATUS.PUBLISHED } }),
       this.storyRepository.count({ where: { status: STORY_STATUS.DRAFT } }),
-      this.storyRepository.count({ where: { status: STORY_STATUS.SUBMITTED } }),
-      this.storyRepository.count({ where: { status: STORY_STATUS.REJECTED } }),
-      this.storyRepository.count({ where: { status: STORY_STATUS.APPROVED } }),
     ]);
 
     return {
@@ -47,9 +41,6 @@ export class AdminService {
         total: totalStories,
         published: publishedStories,
         draft: draftStories,
-        submitted: submittedStories,
-        rejected: rejectedStories,
-        approved: approvedStories,
       },
       engagement: {
         totalComments,
@@ -107,48 +98,6 @@ export class AdminService {
     return { users, pagination };
   }
 
-  /**
-   * Moderate/update story status (approve, reject, publish, draft)
-   */
-  async updateStoryStatus(
-    identifier: string,
-    status: string,
-    rejectionReason?: string
-  ) {
-    const isUuid =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-        identifier
-      );
-
-    let story = null;
-    if (isUuid) {
-      story = await storyRepository.findByUuid(identifier);
-    }
-    if (!story) {
-      story = await storyRepository.findBySlug(identifier);
-    }
-    if (!story && !isNaN(Number(identifier))) {
-      story = await storyRepository.findById(Number(identifier));
-    }
-
-    if (!story) {
-      throw ApiError.notFound("Story not found");
-    }
-
-    story.status = status;
-    if (status === STORY_STATUS.REJECTED && rejectionReason) {
-      story.rejectionReason = rejectionReason;
-    } else if (status !== STORY_STATUS.REJECTED) {
-      story.rejectionReason = null as any;
-    }
-
-    if (status === STORY_STATUS.PUBLISHED && !story.published_at) {
-      story.published_at = new Date();
-    }
-
-    await this.storyRepository.save(story);
-    return story;
-  }
 
   /**
    * Delete any story as admin

@@ -51,7 +51,7 @@ export class LikeRepository {
   ): Promise<{ likes: Like[]; total: number }> {
     const [likes, total] = await this.repository.findAndCount({
       where: { user_id },
-      relations: { story: { author: true } },
+      relations: { story: { creator: true } },
       order: { created_at: "DESC" },
       skip: options.skip,
       take: options.take,

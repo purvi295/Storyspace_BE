@@ -5,9 +5,6 @@ export const ROLES = {
 
 export const STORY_STATUS = {
   DRAFT: "draft",
-  SUBMITTED: "submitted",
-  APPROVED: "approved",
-  REJECTED: "rejected",
   PUBLISHED: "published",
 };
 

@@ -37,33 +37,6 @@ export class AdminController {
     }
   }
 
-  // PUT /api/admin/stories/:identifier/status
-  async updateStoryStatus(req: Request, res: Response) {
-    try {
-      const identifier = req.params.identifier as string;
-      const { status, rejectionReason } = req.body;
-
-      if (!status) {
-        return sendErrorResponse(res, 400, "Story status is required");
-      }
-
-      const updatedStory = await adminService.updateStoryStatus(
-        identifier,
-        status,
-        rejectionReason
-      );
-
-      return sendApiResponse(
-        res,
-        200,
-        { story: updatedStory },
-        `Story status updated to '${status}' successfully`
-      );
-    } catch (error: any) {
-      return sendErrorResponse(res, error.statusCode || 400, error.message);
-    }
-  }
-
   // DELETE /api/admin/stories/:identifier
   async deleteStory(req: Request, res: Response) {
     try {

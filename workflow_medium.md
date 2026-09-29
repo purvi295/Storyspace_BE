@@ -395,9 +395,10 @@ module.exports = CreateCommentsAndLikesTables1700000004000;
 
 - `POST /api/auth/register` — Register (email, password, username, fullName).
 - `POST /api/auth/login` — Authenticate and return JWT token.
+- `POST /api/auth/logout` — Logout user.
 - `GET /api/auth/me` — Current authenticated user profile.
 - `GET /api/users/:username` — Public profile + follower/following counts.
-- `PUT /api/users/profile` — Update own profile (bio, avatar, name).
+- `PUT /api/users/profile` — Update own profile (bio, avatar image upload to S3, name).
 - `POST /api/users/:id/follow` — Follow user.
 - `DELETE /api/users/:id/follow` — Unfollow user.
 - `GET /api/users/:id/followers` — List followers.
