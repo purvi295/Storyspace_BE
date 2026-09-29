@@ -2,7 +2,7 @@ import Joi from "joi";
 
 /**
  * Validates requests to create a public user account.
- * Supports both `fullName` and `full_name` formats.
+ * Supports both `full_name` format.
  */
 export const registerSchema = Joi.object({
   email: Joi.string().trim().lowercase().email().max(100).required().messages({
@@ -11,10 +11,10 @@ export const registerSchema = Joi.object({
     "string.max": "Email cannot exceed 100 characters",
     "any.required": "Email is required",
   }),
-  password: Joi.string().min(8).max(128).required().messages({
+  password: Joi.string().min(8).max(50).required().messages({
     "string.empty": "Password cannot be empty",
     "string.min": "Password must be at least 8 characters long",
-    "string.max": "Password cannot exceed 128 characters",
+    "string.max": "Password cannot exceed 50 characters",
     "any.required": "Password is required",
   }),
   username: Joi.string()
@@ -31,20 +31,16 @@ export const registerSchema = Joi.object({
       "string.max": "Username cannot exceed 50 characters",
       "any.required": "Username is required",
     }),
-  fullName: Joi.string().trim().min(2).max(150).optional().messages({
-    "string.min": "Full name must be at least 2 characters long",
-    "string.max": "Full name cannot exceed 150 characters",
-    "string.empty": "Full name cannot be empty",
-  }),
+
   full_name: Joi.string().trim().min(2).max(150).optional().messages({
     "string.min": "Full name must be at least 2 characters long",
     "string.max": "Full name cannot exceed 150 characters",
     "string.empty": "Full name cannot be empty",
   }),
 })
-  .or("fullName", "full_name")
+  .or("full_name")
   .messages({
-    "object.missing": "Full name is required (provide fullName or full_name)",
+    "object.missing": "full name is required",
   });
 
 /**
@@ -57,10 +53,10 @@ export const loginSchema = Joi.object({
     "string.max": "Email cannot exceed 100 characters",
     "any.required": "Email is required",
   }),
-  password: Joi.string().min(1).max(128).required().messages({
+  password: Joi.string().min(8).max(50).required().messages({
     "string.empty": "Password cannot be empty",
-    "string.min": "Password must be at least 1 character long",
-    "string.max": "Password cannot exceed 128 characters",
+    "string.min": "Password must be at least 8 characters long",
+    "string.max": "Password cannot exceed 50 characters",
     "any.required": "Password is required",
   }),
 });

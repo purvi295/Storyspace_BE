@@ -3,7 +3,7 @@ export interface RegisterDto {
   email: string;
   password: string;
   username: string;
-  fullName: string;
+  full_name: string;
 }
 
 /** Credentials accepted by the login endpoint. */

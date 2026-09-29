@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "a0d230a8-9aa6-4a79-b354-6e5a1dc18f72",
     "name": "Learning Task API",
-    "description": "Postman collection for the routes mounted in src/app.ts.\n\nSet baseUrl if the server runs on a different host or port. Register or log in first; those requests save the JWT, username, and user UUID.\n\nCreate Story saves storySlug, storyUuid, and storyIdentifier. Add Comment saves commentId.\n\nEvery request body lists required and optional fields with sample values so you can replace them with real data. Optional query params are included on list endpoints. Remove a query param if you do not want that filter.\n\nAllowed story status values: draft, submitted, approved, rejected, published.\nAllowed story visibility values: public, followers_only.\nStory, like, and comment identifiers accept a slug, story UUID, or numeric story id.",
+    "description": "Postman collection for the routes mounted in src/app.ts.\n\nRegister or Login saves token, username, and userUuid. Admin Login saves adminToken. Create Story saves storySlug, storyUuid, and storyIdentifier. Add Comment saves commentId.\n\nBodies include every accepted field, including optional ones, with sample values. Remove a query param when you do not want that filter.\n\nStory status: draft, submitted, approved, rejected, published.\nStory visibility: public, followers_only.\nStory identifiers accept a slug, story UUID, or numeric id.\nUsernames may contain letters, numbers, underscores, hyphens, and periods.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -13,6 +13,11 @@
     },
     {
       "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
       "value": "",
       "type": "string"
     },
@@ -62,7 +67,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/health",
-            "description": "No body. Confirms the API process is up."
+            "description": "No body."
           }
         }
       ]
@@ -97,7 +102,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"postman.user@example.com\",\n  \"password\": \"Password123!\",\n  \"username\": \"postman_user\",\n  \"fullName\": \"Postman User\"\n}",
+              "raw": "{\n  \"email\": \"postman.user@example.com\",\n  \"password\": \"Password123!\",\n  \"username\": \"postman_user\",\n  \"fullName\": \"Postman User\",\n  \"full_name\": \"Postman User\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -105,7 +110,7 @@
               }
             },
             "url": "{{baseUrl}}/api/auth/register",
-            "description": "All fields are required.\n\n- email: valid email, max 100 characters\n- password: 8 to 128 characters\n- username: letters and numbers only, 3 to 50 characters\n- fullName: 2 to 150 characters"
+            "description": "Required:\n- email: valid email, max 100 characters\n- password: 8 to 128 characters\n- username: 3 to 50 characters. Letters, numbers, underscore, hyphen, and period.\n- full name: send fullName or full_name (2 to 150 characters). Both are accepted; one is enough."
           }
         },
         {
@@ -143,7 +148,43 @@
               }
             },
             "url": "{{baseUrl}}/api/auth/login",
-            "description": "All fields are required.\n\n- email: valid email, max 100 characters\n- password: required"
+            "description": "Required:\n- email: valid email, max 100 characters\n- password: 1 to 128 characters"
+          }
+        },
+        {
+          "name": "Admin Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const payload = body.data || body;",
+                  "if (payload.token) pm.collectionVariables.set('adminToken', payload.token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@example.com\",\n  \"password\": \"Admin123!\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/auth/login",
+            "description": "Same login payload. Saves the token to adminToken so user requests keep using token.\n\nReplace email and password with the seeded admin account (ADMIN_EMAIL and ADMIN_PASSWORD)."
           }
         },
         {
@@ -162,7 +203,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/auth/me",
-            "description": "No body. Requires the JWT saved by Register or Login."
+            "description": "No body. Requires the JWT from Register or Login."
           }
         },
         {
@@ -195,7 +236,7 @@
               }
             },
             "url": "{{baseUrl}}/api/auth/edit-profile",
-            "description": "Send at least one field. Every field below is optional.\n\n- full_name: 2 to 150 characters\n- bio: max 500 characters, empty string allowed\n- avatar_url: valid URL, max 500 characters, empty string allowed\n- username: letters and numbers only, 3 to 50 characters"
+            "description": "Send at least one field. All fields are optional.\n\n- full_name: 2 to 150 characters\n- bio: max 500 characters, empty string allowed\n- avatar_url: valid URL, max 500 characters, empty string allowed\n- username: 3 to 50 characters. Letters, numbers, underscore, hyphen, and period."
           }
         }
       ]
@@ -209,15 +250,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/users/list?page=1&limit=10",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "users",
-                "list"
-              ],
+              "raw": "{{baseUrl}}/api/users/list?page=1&limit=10&search=postman",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "list"],
               "query": [
                 {
                   "key": "page",
@@ -227,11 +262,16 @@
                 {
                   "key": "limit",
                   "value": "10",
-                  "description": "Optional. Page size."
+                  "description": "Optional. Page size, max 100."
+                },
+                {
+                  "key": "search",
+                  "value": "postman",
+                  "description": "Optional. Search text, max 100 characters."
                 }
               ]
             },
-            "description": "No body. Optional query params: page, limit."
+            "description": "No body. Optional query params: page, limit, search."
           }
         },
         {
@@ -240,7 +280,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/users/{{username}}",
-            "description": "No body. Path param username is required."
+            "description": "No body. Returns followerCount and followingCount with the public profile."
           }
         },
         {
@@ -265,7 +305,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"full_name\": \"Postman User Updated\",\n  \"bio\": \"Profile updated through Postman.\",\n  \"avatar_url\": \"https://example.com/avatar.png\"\n}",
+              "raw": "{\n  \"full_name\": \"Postman User Updated\",\n  \"username\": \"postman_user\",\n  \"bio\": \"Profile updated through Postman.\",\n  \"avatar_url\": \"https://example.com/avatar.png\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -273,7 +313,61 @@
               }
             },
             "url": "{{baseUrl}}/api/users/profile",
-            "description": "Send at least one field. Every field below is optional. Username is not accepted on this route; use Edit Profile for that.\n\n- full_name: 2 to 150 characters\n- bio: max 500 characters, empty string allowed\n- avatar_url: valid URL, max 500 characters, empty string allowed"
+            "description": "JSON update. Send at least one field. All fields are optional.\n\n- full_name: 2 to 150 characters\n- username: 3 to 50 characters. Letters, numbers, underscore, hyphen, and period.\n- bio: max 500 characters, empty string allowed\n- avatar_url: valid URL, max 500 characters, empty string allowed\n\nTo upload an image file instead of avatar_url, use Update My Profile with Image."
+          }
+        },
+        {
+          "name": "Update My Profile with Image",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "full_name",
+                  "value": "Postman User Updated",
+                  "type": "text",
+                  "description": "Optional. 2 to 150 characters."
+                },
+                {
+                  "key": "username",
+                  "value": "postman_user",
+                  "type": "text",
+                  "description": "Optional. 3 to 50 characters."
+                },
+                {
+                  "key": "bio",
+                  "value": "Profile updated with an uploaded avatar.",
+                  "type": "text",
+                  "description": "Optional. Max 500 characters. Empty string allowed."
+                },
+                {
+                  "key": "avatar_url",
+                  "value": "https://example.com/avatar.png",
+                  "type": "text",
+                  "description": "Optional URL. Ignored when an image file is attached."
+                },
+                {
+                  "key": "avatar",
+                  "type": "file",
+                  "src": [],
+                  "description": "Optional file. JPEG, PNG, WEBP, or GIF. Max 5MB. Also accepted as image."
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/users/profile",
+            "description": "Multipart update. At least one text field is required. An attached avatar or image file is uploaded and stored as avatar_url."
           }
         },
         {
@@ -292,7 +386,7 @@
             "method": "POST",
             "header": [],
             "url": "{{baseUrl}}/api/users/{{targetUsername}}/follow",
-            "description": "No body. Path param targetUsername accepts a username or user UUID."
+            "description": "No body. targetUsername is a username or user UUID, 3 to 100 characters."
           }
         },
         {
@@ -311,7 +405,7 @@
             "method": "DELETE",
             "header": [],
             "url": "{{baseUrl}}/api/users/{{targetUsername}}/follow",
-            "description": "No body. Path param targetUsername accepts a username or user UUID."
+            "description": "No body. targetUsername is a username or user UUID."
           }
         },
         {
@@ -321,15 +415,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/users/{{username}}/followers?page=1&limit=10",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "users",
-                "{{username}}",
-                "followers"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "{{username}}", "followers"],
               "query": [
                 {
                   "key": "page",
@@ -339,11 +426,11 @@
                 {
                   "key": "limit",
                   "value": "10",
-                  "description": "Optional. Page size."
+                  "description": "Optional. Page size, max 100."
                 }
               ]
             },
-            "description": "No body. Path param accepts a username or user UUID. Optional query params: page, limit."
+            "description": "No body. Optional query params: page, limit."
           }
         },
         {
@@ -353,15 +440,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/users/{{username}}/following?page=1&limit=10",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "users",
-                "{{username}}",
-                "following"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "{{username}}", "following"],
               "query": [
                 {
                   "key": "page",
@@ -371,11 +451,11 @@
                 {
                   "key": "limit",
                   "value": "10",
-                  "description": "Optional. Page size."
+                  "description": "Optional. Page size, max 100."
                 }
               ]
             },
-            "description": "No body. Path param accepts a username or user UUID. Optional query params: page, limit."
+            "description": "No body. Optional query params: page, limit."
           }
         },
         {
@@ -394,7 +474,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/users/{{targetUsername}}/is-following",
-            "description": "No body. Path param targetUsername accepts a username or user UUID."
+            "description": "No body. targetUsername is a username or user UUID."
           }
         }
       ]
@@ -409,14 +489,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/stories/public?page=1&limit=10",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "stories",
-                "public"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stories", "public"],
               "query": [
                 {
                   "key": "page",
@@ -430,7 +504,7 @@
                 }
               ]
             },
-            "description": "No body. Returns published public stories. Optional query params: page, limit."
+            "description": "No body. Optional query params: page, limit."
           }
         },
         {
@@ -439,16 +513,9 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/stories/user/{{username}}?page=1&limit=10&status=published",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "stories",
-                "user",
-                "{{username}}"
-              ],
+              "raw": "{{baseUrl}}/api/stories/user/{{username}}?page=1&limit=10&status=published&visibility=public",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stories", "user", "{{username}}"],
               "query": [
                 {
                   "key": "page",
@@ -463,11 +530,16 @@
                 {
                   "key": "status",
                   "value": "published",
-                  "description": "Optional. One of draft, submitted, approved, rejected, published. Defaults to published."
+                  "description": "Optional. draft, submitted, approved, rejected, or published."
+                },
+                {
+                  "key": "visibility",
+                  "value": "public",
+                  "description": "Optional. public or followers_only."
                 }
               ]
             },
-            "description": "No body. Optional query params: page, limit, status."
+            "description": "No body. Optional auth. Followers-only stories are hidden unless the caller follows the author. Optional query params: page, limit, status, visibility."
           }
         },
         {
@@ -476,7 +548,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/stories/slug/{{storySlug}}",
-            "description": "No body. Path param storySlug is the story slug."
+            "description": "No body. Optional auth. Followers-only stories require a token from a follower."
           }
         },
         {
@@ -518,7 +590,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"My First Story\",\n  \"content\": \"This is the full content of my story. It must be at least 100 characters long to pass validation and give the story enough text to publish.\",\n  \"slug\": \"my-first-story\",\n  \"summary\": \"A brief summary of my first story\",\n  \"coverImageUrl\": \"https://example.com/covers/my-first-story.png\",\n  \"status\": \"published\",\n  \"visibility\": \"public\"\n}",
+              "raw": "{\n  \"title\": \"My First Story\",\n  \"content\": \"This is the full content of my first story.\",\n  \"slug\": \"my-first-story\",\n  \"summary\": \"A brief summary\",\n  \"coverImageUrl\": \"https://example.com/covers/my-first-story.png\",\n  \"status\": \"published\",\n  \"visibility\": \"public\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -526,7 +598,96 @@
               }
             },
             "url": "{{baseUrl}}/api/stories/create",
-            "description": "Required:\n- title: at least 10 characters, must be unique\n- content: at least 100 characters\n\nOptional:\n- slug: 3 to 300 characters. Generated from the title when omitted.\n- summary: 10 to 500 characters\n- coverImageUrl: valid URL\n- status: draft, submitted, approved, rejected, or published. Defaults to draft.\n- visibility: public or followers_only. Defaults to followers_only."
+            "description": "Required:\n- title: 3 to 255 characters, unique\n- content: at least 10 characters\n\nOptional:\n- slug: 3 to 300 characters. Letters, numbers, hyphens, and underscores. Generated from the title when omitted.\n- summary: 3 to 500 characters, empty string allowed\n- coverImageUrl: valid URL, max 500 characters. Aliases: cover_image_url, coverImage, cover_image, image, imageUrl.\n- status: draft, submitted, approved, rejected, or published. Defaults to draft.\n- visibility: public or followers_only. Defaults to followers_only."
+          }
+        },
+        {
+          "name": "Create Story with Cover Image",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const story = body.data || {};",
+                  "if (story.slug) {",
+                  "  pm.collectionVariables.set('storySlug', story.slug);",
+                  "  pm.collectionVariables.set('storyIdentifier', story.slug);",
+                  "}",
+                  "if (story.story_uuid) pm.collectionVariables.set('storyUuid', story.story_uuid);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "title",
+                  "value": "My First Story",
+                  "type": "text",
+                  "description": "Required. 3 to 255 characters."
+                },
+                {
+                  "key": "content",
+                  "value": "This is the full content of my first story.",
+                  "type": "text",
+                  "description": "Required. At least 10 characters."
+                },
+                {
+                  "key": "slug",
+                  "value": "my-first-story",
+                  "type": "text",
+                  "description": "Optional. 3 to 300 characters."
+                },
+                {
+                  "key": "summary",
+                  "value": "A brief summary",
+                  "type": "text",
+                  "description": "Optional. 3 to 500 characters."
+                },
+                {
+                  "key": "coverImageUrl",
+                  "value": "",
+                  "type": "text",
+                  "description": "Optional URL. Leave empty when uploading a file."
+                },
+                {
+                  "key": "status",
+                  "value": "published",
+                  "type": "text",
+                  "description": "Optional. draft, submitted, approved, rejected, or published."
+                },
+                {
+                  "key": "visibility",
+                  "value": "public",
+                  "type": "text",
+                  "description": "Optional. public or followers_only."
+                },
+                {
+                  "key": "coverImage",
+                  "type": "file",
+                  "src": [],
+                  "description": "Optional file. JPEG, PNG, WEBP, or GIF. Max 5MB. Also accepted as image or cover_image."
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/stories/create",
+            "description": "Multipart create. The cover file replaces coverImageUrl."
           }
         },
         {
@@ -546,14 +707,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/stories/my?page=1&limit=10&status=published",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "stories",
-                "my"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stories", "my"],
               "query": [
                 {
                   "key": "page",
@@ -568,7 +723,7 @@
                 {
                   "key": "status",
                   "value": "published",
-                  "description": "Optional. One of draft, submitted, approved, rejected, published."
+                  "description": "Optional. draft, submitted, approved, rejected, or published."
                 }
               ]
             },
@@ -592,13 +747,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/stories?page=1&limit=10&status=published&visibility=public&author={{username}}",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "stories"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stories"],
               "query": [
                 {
                   "key": "page",
@@ -613,7 +763,7 @@
                 {
                   "key": "status",
                   "value": "published",
-                  "description": "Optional. One of draft, submitted, approved, rejected, published."
+                  "description": "Optional. draft, submitted, approved, rejected, or published."
                 },
                 {
                   "key": "visibility",
@@ -623,7 +773,7 @@
                 {
                   "key": "author",
                   "value": "{{username}}",
-                  "description": "Optional. Filter by author username."
+                  "description": "Optional. Author username or identifier, max 100 characters."
                 }
               ]
             },
@@ -652,7 +802,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Updated My First Story\",\n  \"content\": \"This is the updated content of my story. It has been revised and expanded so it stays longer than 100 characters for validation.\",\n  \"summary\": \"Updated summary of the story\",\n  \"coverImageUrl\": \"https://example.com/covers/my-first-story-updated.png\",\n  \"status\": \"published\",\n  \"visibility\": \"public\"\n}",
+              "raw": "{\n  \"title\": \"Updated My First Story\",\n  \"content\": \"This is the updated content of my story.\",\n  \"slug\": \"updated-my-first-story\",\n  \"summary\": \"Updated summary of the story\",\n  \"coverImageUrl\": \"https://example.com/covers/my-first-story-updated.png\",\n  \"status\": \"published\",\n  \"visibility\": \"public\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -660,7 +810,7 @@
               }
             },
             "url": "{{baseUrl}}/api/stories/{{storySlug}}",
-            "description": "Every field is optional. Send only the fields you want to change. Changing title also regenerates the slug.\n\n- title: at least 10 characters\n- content: at least 100 characters\n- summary: 10 to 500 characters\n- coverImageUrl: valid URL\n- status: draft, submitted, approved, rejected, or published\n- visibility: public or followers_only"
+            "description": "Send at least one field. All fields are optional.\n\n- title: 3 to 255 characters\n- content: at least 10 characters\n- slug: 3 to 300 characters. Letters, numbers, hyphens, and underscores.\n- summary: 3 to 500 characters, empty string allowed\n- coverImageUrl: valid URL. Aliases: cover_image_url, coverImage, cover_image, image, imageUrl.\n- status: draft, submitted, approved, rejected, or published\n- visibility: public or followers_only\n\nA multipart body can also include a coverImage, image, or cover_image file."
           }
         },
         {
@@ -698,7 +848,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/stories/stats/my",
-            "description": "No body. Returns total, draft, and published counts for the signed-in user."
+            "description": "No body."
           }
         }
       ]
@@ -722,7 +872,7 @@
             "method": "POST",
             "header": [],
             "url": "{{baseUrl}}/api/stories/{{storyIdentifier}}/like",
-            "description": "No body. storyIdentifier can be a slug, story UUID, or numeric story id."
+            "description": "No body. storyIdentifier is a slug, story UUID, or numeric id."
           }
         },
         {
@@ -741,7 +891,7 @@
             "method": "DELETE",
             "header": [],
             "url": "{{baseUrl}}/api/stories/{{storyIdentifier}}/like",
-            "description": "No body. storyIdentifier can be a slug, story UUID, or numeric story id."
+            "description": "No body."
           }
         },
         {
@@ -760,7 +910,7 @@
             "method": "POST",
             "header": [],
             "url": "{{baseUrl}}/api/stories/{{storyIdentifier}}/like/toggle",
-            "description": "No body. Likes the story when it is not liked, and removes the like when it already is."
+            "description": "No body."
           }
         },
         {
@@ -770,15 +920,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/stories/{{storyIdentifier}}/likes?page=1&limit=10",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "stories",
-                "{{storyIdentifier}}",
-                "likes"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stories", "{{storyIdentifier}}", "likes"],
               "query": [
                 {
                   "key": "page",
@@ -788,11 +931,11 @@
                 {
                   "key": "limit",
                   "value": "10",
-                  "description": "Optional. Page size."
+                  "description": "Optional. Page size, max 100."
                 }
               ]
             },
-            "description": "No body. Optional query params: page, limit."
+            "description": "No body. Optional auth. Optional query params: page, limit."
           }
         },
         {
@@ -811,7 +954,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/stories/{{storyIdentifier}}/like/status",
-            "description": "No body. Returns whether the signed-in user has liked this story."
+            "description": "No body."
           }
         }
       ]
@@ -862,7 +1005,7 @@
               }
             },
             "url": "{{baseUrl}}/api/stories/{{storyIdentifier}}/comments",
-            "description": "Required:\n- content: 1 to 2000 characters\n\nstoryIdentifier can be a slug, story UUID, or numeric story id."
+            "description": "Required:\n- content: 1 to 2000 characters"
           }
         },
         {
@@ -872,15 +1015,8 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/stories/{{storyIdentifier}}/comments?page=1&limit=10",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "stories",
-                "{{storyIdentifier}}",
-                "comments"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "stories", "{{storyIdentifier}}", "comments"],
               "query": [
                 {
                   "key": "page",
@@ -894,7 +1030,7 @@
                 }
               ]
             },
-            "description": "No body. Optional query params: page, limit."
+            "description": "No body. Optional auth. Optional query params: page, limit."
           }
         },
         {
@@ -903,7 +1039,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/comments/{{commentId}}",
-            "description": "No body. Path param commentId is the numeric comment id."
+            "description": "No body. commentId is a positive integer."
           }
         },
         {
@@ -991,23 +1127,152 @@
             },
             "url": {
               "raw": "{{baseUrl}}/api/upload/image?folder=stories",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "upload",
-                "image"
-              ],
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "upload", "image"],
               "query": [
                 {
                   "key": "folder",
                   "value": "stories",
-                  "description": "Optional. Storage folder. Use stories or avatars. Defaults to stories."
+                  "description": "Optional. stories or avatars. Defaults to stories."
                 }
               ]
             },
-            "description": "Multipart form field image is required. Choose a local image file in Postman before sending.\n\nOptional query param folder: stories or avatars. The response URL can be copied into coverImageUrl or avatar_url."
+            "description": "Required form field: image.\n\nOptional query param folder: stories or avatars. Copy the returned URL into coverImageUrl or avatar_url."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin",
+      "item": [
+        {
+          "name": "Platform Stats",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/stats",
+            "description": "No body. Requires an admin JWT from Admin Login."
+          }
+        },
+        {
+          "name": "List Users",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/admin/users?page=1&limit=10&search=",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "admin", "users"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Optional. Page number, starts at 1."
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Optional. Page size, max 100."
+                },
+                {
+                  "key": "search",
+                  "value": "",
+                  "description": "Optional. Search text, max 100 characters."
+                }
+              ]
+            },
+            "description": "No body. Optional query params: page, limit, search."
+          }
+        },
+        {
+          "name": "Update Story Status",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"rejected\",\n  \"rejectionReason\": \"Needs a clearer summary before it can be published.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/admin/stories/{{storyIdentifier}}/status",
+            "description": "Required:\n- status: draft, submitted, approved, rejected, or published\n\nOptional:\n- rejectionReason: max 1000 characters, empty string allowed"
+          }
+        },
+        {
+          "name": "Delete Story",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/stories/{{storyIdentifier}}",
+            "description": "No body. Deletes any story. storyIdentifier is a slug, story UUID, or numeric id."
+          }
+        },
+        {
+          "name": "Delete Comment",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{adminToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/admin/comments/{{commentId}}",
+            "description": "No body. Deletes any comment. commentId is a positive integer."
           }
         }
       ]

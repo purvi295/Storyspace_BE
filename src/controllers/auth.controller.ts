@@ -8,18 +8,18 @@ export class AuthController {
   async register(req: Request<{}, unknown, RegisterDto>, res: Response) {
     try {
       const { email, password, username } = req.body;
-      const fullName = req.body.fullName || (req.body as any).full_name;
+      const full_name = req.body.full_name;
 
       const result = await authService.register({
         email,
         password,
         username,
-        fullName,
+        full_name,
       });
 
       return sendApiResponse(res, 201, result, "User registered successfully");
     } catch (error: any) {
-      return sendErrorResponse(res, 400, error.message);
+      return sendErrorResponse(res, error.statusCode || 400, error.message);
     }
   }
 
@@ -69,8 +69,7 @@ export class AuthController {
 
       return sendApiResponse(res, 200, { user: userWithoutPassword }, "Profile updated successfully");
     } catch (error: any) {
-      const status = error.message === "User not found" ? 404 : 500;
-      return sendErrorResponse(res, status, error.message);
+      return sendErrorResponse(res, error.statusCode || 500, error.message);
     }
   }
 }
