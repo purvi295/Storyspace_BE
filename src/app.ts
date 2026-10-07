@@ -10,6 +10,8 @@ import commentRoutes from "./routes/comment.routes";
 import uploadRoutes from "./routes/upload.routes";
 import adminRoutes from "./routes/admin.routes";
 import { notFoundHandler, errorHandler } from "./middlewares/error.handler";
+import aiRoutes from "./routes/ai.routes";
+import internalRoutes from "./routes/internal.routes";
 
 const app: Application = express();
 
@@ -20,7 +22,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-
 // ==========================================
 // 2. Application Routes
 // ==========================================
@@ -30,6 +31,8 @@ app.use("/api/stories", storyRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/ai", aiRoutes);
+app.use("/internal", internalRoutes);
 
 // ==========================================
 // 3. Error Handling Middlewares

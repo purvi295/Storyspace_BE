@@ -22,6 +22,21 @@
       "type": "string"
     },
     {
+      "key": "email",
+      "value": "postman.user@example.com",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "Password123!",
+      "type": "string"
+    },
+    {
+      "key": "full_name",
+      "value": "Postman User",
+      "type": "string"
+    },
+    {
       "key": "username",
       "value": "postman_user",
       "type": "string"
@@ -54,6 +69,36 @@
     {
       "key": "commentId",
       "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "storyTitle",
+      "value": "My Default Story Title",
+      "type": "string"
+    },
+    {
+      "key": "storyContent",
+      "value": "This is the default story content used when no CSV data file is loaded in the Postman Runner. Replace with meaningful text.",
+      "type": "string"
+    },
+    {
+      "key": "storySummary",
+      "value": "A brief default summary",
+      "type": "string"
+    },
+    {
+      "key": "storyStatus",
+      "value": "published",
+      "type": "string"
+    },
+    {
+      "key": "storyVisibility",
+      "value": "public",
+      "type": "string"
+    },
+    {
+      "key": "commentContent",
+      "value": "This is a default comment. Use bulk_add_comment.csv in the Runner to post unique comments per user.",
       "type": "string"
     }
   ],
@@ -102,7 +147,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"postman.user@example.com\",\n  \"password\": \"Password123!\",\n  \"username\": \"postman_user\",\n  \"fullName\": \"Postman User\",\n  \"full_name\": \"Postman User\"\n}",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"username\": \"{{username}}\",\n  \"full_name\": \"{{full_name}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -140,7 +185,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"postman.user@example.com\",\n  \"password\": \"Password123!\"\n}",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -586,27 +631,27 @@
                   "formdata": [
                     {
                       "key": "title",
-                      "value": "My First Story",
+                      "value": "{{storyTitle}}",
                       "type": "text",
-                      "description": "Required. 3 to 255 characters."
+                      "description": "Required. 3 to 255 characters. Driven by bulk_create_story.csv storyTitle column."
                     },
                     {
                       "key": "content",
-                      "value": "This is the full content of my first story.",
+                      "value": "{{storyContent}}",
                       "type": "text",
-                      "description": "Required. At least 10 characters."
+                      "description": "Required. At least 10 characters. Driven by bulk_create_story.csv storyContent column."
                     },
                     {
                       "key": "slug",
-                      "value": "my-first-story",
+                      "value": "{{storySlug}}",
                       "type": "text",
-                      "description": "Optional. 3 to 300 characters."
+                      "description": "Optional. 3 to 300 characters. Driven by bulk_create_story.csv storySlug column."
                     },
                     {
                       "key": "summary",
-                      "value": "A brief summary",
+                      "value": "{{storySummary}}",
                       "type": "text",
-                      "description": "Optional. 3 to 500 characters."
+                      "description": "Optional. 3 to 500 characters. Driven by bulk_create_story.csv storySummary column."
                     },
                     {
                       "key": "coverImageUrl",
@@ -616,15 +661,15 @@
                     },
                     {
                       "key": "status",
-                      "value": "published",
+                      "value": "{{storyStatus}}",
                       "type": "text",
-                      "description": "Optional. draft, submitted, approved, rejected, or published."
+                      "description": "Optional. draft or published. Driven by bulk_create_story.csv storyStatus column."
                     },
                     {
                       "key": "visibility",
-                      "value": "public",
+                      "value": "{{storyVisibility}}",
                       "type": "text",
-                      "description": "Optional. public or followers_only."
+                      "description": "Optional. public or followers_only. Driven by bulk_create_story.csv storyVisibility column."
                     },
                     {
                       "key": "coverImage",
@@ -964,7 +1009,7 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"content\": \"This is a comment on the story.\"\n}",
+                  "raw": "{\n  \"content\": \"{{commentContent}}\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
@@ -972,7 +1017,7 @@
                   }
                 },
                 "url": "{{baseUrl}}/api/stories/{{storyIdentifier}}/comments",
-                "description": "Required:\n- content: 1 to 2000 characters"
+                "description": "Required:\n- content: 1 to 2000 characters. Driven by bulk_add_comment.csv commentContent column."
               }
             },
             {

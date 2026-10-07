@@ -53,6 +53,32 @@ export class StoryRepository {
       .orderBy("story.published_at", "DESC")
       .addOrderBy("story.created_at", "DESC");
 
+    
+    if (options.searchQuery) {
+      const words = options.searchQuery.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+      if (words.length > 0) {
+        queryBuilder.andWhere(
+          new Brackets((qb) => {
+            words.forEach((word, index) => {
+              const paramName = `keyword_${index}`;
+              const paramValue = `%${word}%`;
+              if (index === 0) {
+                qb.where(
+                  `(LOWER(story.title) LIKE :${paramName} OR LOWER(story.content) LIKE :${paramName} OR LOWER(story.summary) LIKE :${paramName})`,
+                  { [paramName]: paramValue }
+                );
+              } else {
+                qb.andWhere(
+                  `(LOWER(story.title) LIKE :${paramName} OR LOWER(story.content) LIKE :${paramName} OR LOWER(story.summary) LIKE :${paramName})`,
+                  { [paramName]: paramValue }
+                );
+              }
+            });
+          })
+        );
+      }
+    }
+
     const total = await queryBuilder.getCount();
     const stories = await queryBuilder.skip(options.skip).take(options.take).getMany();
 
@@ -111,6 +137,7 @@ export class StoryRepository {
     visibility?: string;
     author?: string;
     currentUserUuid?: string;
+    searchQuery?: string;
     isAdmin?: boolean;
   }): Promise<{ stories: Story[]; total: number }> {
     const queryBuilder = this.repository
@@ -179,6 +206,31 @@ export class StoryRepository {
       queryBuilder.andWhere("story.user_uuid = :author", {
         author: options.author,
       });
+    }
+
+    if (options.searchQuery) {
+      const words = options.searchQuery.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+      if (words.length > 0) {
+        queryBuilder.andWhere(
+          new Brackets((qb) => {
+            words.forEach((word, index) => {
+              const paramName = `keyword_${index}`;
+              const paramValue = `%${word}%`;
+              if (index === 0) {
+                qb.where(
+                  `(LOWER(story.title) LIKE :${paramName} OR LOWER(story.content) LIKE :${paramName} OR LOWER(story.summary) LIKE :${paramName})`,
+                  { [paramName]: paramValue }
+                );
+              } else {
+                qb.andWhere(
+                  `(LOWER(story.title) LIKE :${paramName} OR LOWER(story.content) LIKE :${paramName} OR LOWER(story.summary) LIKE :${paramName})`,
+                  { [paramName]: paramValue }
+                );
+              }
+            });
+          })
+        );
+      }
     }
 
     const total = await queryBuilder.getCount();
