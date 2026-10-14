@@ -251,6 +251,59 @@ export const storyInteractionQuerySchema = Joi.object({
   }),
 });
 
+/**
+ * Validates the request body containing story_uuid for like/comment operations
+ */
+export const storyUuidBodySchema = Joi.object({
+  story_uuid: Joi.string()
+    .trim()
+    .pattern(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
+    .required()
+    .messages({
+      "string.pattern.base": "Invalid UUID format",
+      "any.required": "Story UUID is required",
+    }),
+});
+
+/**
+ * Validates the request query containing story_uuid for like/comment operations
+ */
+export const storyUuidQuerySchema = Joi.object({
+  story_uuid: Joi.string()
+    .trim()
+    .pattern(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
+    .required()
+    .messages({
+      "string.pattern.base": "Invalid UUID format",
+      "any.required": "Story UUID is required",
+    }),
+});
+
+/**
+ * Validates the request query containing story_uuid with pagination for like/comment operations
+ */
+export const storyUuidWithPaginationQuerySchema = Joi.object({
+  story_uuid: Joi.string()
+    .trim()
+    .pattern(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
+    .required()
+    .messages({
+      "string.pattern.base": "Invalid UUID format",
+      "any.required": "Story UUID is required",
+    }),
+  page: Joi.number().integer().min(1).default(1).messages({
+    "number.base": "Page must be a valid number",
+    "number.integer": "Page must be an integer",
+    "number.min": "Page must be at least 1",
+  }),
+  limit: Joi.number().integer().min(1).max(100).default(10).messages({
+    "number.base": "Limit must be a valid number",
+    "number.integer": "Limit must be an integer",
+    "number.min": "Limit must be at least 1",
+    "number.max": "Limit cannot exceed 100",
+  }),
+});
+
 export default {
   createStorySchema,
   updateStorySchema,

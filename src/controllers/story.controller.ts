@@ -1,8 +1,17 @@
 import { Request, Response } from "express";
 import { StoryService } from "../services/story.service";
 import { storageService } from "../services/storage.service";
-import { sendApiResponse, sendErrorResponse, sendPaginatedResponse } from "../utils/api.response";
-import { CreateStoryDto, UpdateStoryDto, StoryQueryDto } from "../dtos/story.dto";
+import {
+  sendApiResponse,
+  sendErrorResponse,
+  sendPaginatedResponse,
+} from "../utils/api.response";
+import { AppError } from "../utils/api.error";
+import {
+  CreateStoryDto,
+  UpdateStoryDto,
+  StoryQueryDto,
+} from "../dtos/story.dto";
 
 export class StoryController {
   // POST /api/stories/create - Create a new story
@@ -24,7 +33,10 @@ export class StoryController {
         req.body.imageUrl;
 
       if (req.file) {
-        const uploadResult = await storageService.uploadImage(req.file, "stories");
+        const uploadResult = await storageService.uploadImage(
+          req.file,
+          "stories",
+        );
         coverImageUrl = uploadResult.url;
       }
 
@@ -38,8 +50,13 @@ export class StoryController {
         visibility,
       });
       return sendApiResponse(res, 201, story, "Story created successfully");
-    } catch (error: any) {
-      return sendErrorResponse(res, error.statusCode || 400, error.message);
+    } catch (error: unknown) {
+      const err = error as AppError;
+      return sendErrorResponse(
+        res,
+        err.statusCode || 400,
+        (error as Error).message,
+      );
     }
   }
 
@@ -50,13 +67,13 @@ export class StoryController {
         page: req.query.page ? Number(req.query.page) : undefined,
         limit: req.query.limit ? Number(req.query.limit) : undefined,
       };
-      
+
       const result = await StoryService.getPublicStories(query);
       return sendPaginatedResponse(
         res,
         result.stories,
         result.pagination,
-        "Public stories fetched successfully"
+        "Public stories fetched successfully",
       );
     } catch (error: any) {
       return sendErrorResponse(res, 500, error.message);
@@ -73,16 +90,22 @@ export class StoryController {
         status: req.query.status as string,
         visibility: req.query.visibility as string,
       };
-      
+
       const result = await StoryService.getStoriesByUser(
         username,
         query,
         req.user?.user_uuid,
-        req.user?.role
+        req.user?.role,
       );
-      return sendApiResponse(res, 200, result, "User stories fetched successfully");
+      return sendPaginatedResponse(
+        res,
+        result.stories,
+        result.pagination,
+        "User stories fetched successfully",
+      );
     } catch (error: any) {
-      const status = error.statusCode || (error.message === "User not found" ? 404 : 500);
+      const status =
+        error.statusCode || (error.message === "User not found" ? 404 : 500);
       return sendErrorResponse(res, status, error.message);
     }
   }
@@ -94,11 +117,12 @@ export class StoryController {
       const story = await StoryService.getStoryBySlug(
         slug,
         req.user?.user_uuid,
-        req.user?.role
+        req.user?.role,
       );
       return sendApiResponse(res, 200, { story }, "Story fetched successfully");
     } catch (error: any) {
-      const status = error.statusCode || (error.message === "Story not found" ? 404 : 500);
+      const status =
+        error.statusCode || (error.message === "Story not found" ? 404 : 500);
       return sendErrorResponse(res, status, error.message);
     }
   }
@@ -116,13 +140,13 @@ export class StoryController {
         limit: req.query.limit ? Number(req.query.limit) : undefined,
         status: req.query.status as string,
       };
-      
+
       const result = await StoryService.getMyStories(user_uuid, query);
       return sendPaginatedResponse(
         res,
         result.stories,
         result.pagination,
-        "Your stories fetched successfully"
+        "Your stories fetched successfully",
       );
     } catch (error: any) {
       return sendErrorResponse(res, error.statusCode || 500, error.message);
@@ -144,13 +168,17 @@ export class StoryController {
         visibility: req.query.visibility as string,
         author: req.query.author as string,
       };
-      
-      const result = await StoryService.getAllStories(query, user_uuid, req.user?.role);
+
+      const result = await StoryService.getAllStories(
+        query,
+        user_uuid,
+        req.user?.role,
+      );
       return sendPaginatedResponse(
         res,
         result.stories,
         result.pagination,
-        "All stories fetched successfully"
+        "All stories fetched successfully",
       );
     } catch (error: any) {
       return sendErrorResponse(res, error.statusCode || 500, error.message);
@@ -162,7 +190,7 @@ export class StoryController {
     try {
       const slug = req.params.slug as string;
       const user_uuid = req.user?.user_uuid;
-      
+
       if (!user_uuid) {
         return sendErrorResponse(res, 401, "User not authenticated");
       }
@@ -178,7 +206,10 @@ export class StoryController {
         req.body.imageUrl;
 
       if (req.file) {
-        const uploadResult = await storageService.uploadImage(req.file, "stories");
+        const uploadResult = await storageService.uploadImage(
+          req.file,
+          "stories",
+        );
         coverImageUrl = uploadResult.url;
       }
 
@@ -187,11 +218,27 @@ export class StoryController {
       }
 
       const story = await StoryService.getStoryBySlug(slug, user_uuid);
-      const updatedStory = await StoryService.updateStory(story, updatePayload, user_uuid);
-      return sendApiResponse(res, 200, { story: updatedStory }, "Story updated successfully");
+      console.log(user_uuid);
+
+      const updatedStory = await StoryService.updateStory(
+        story,
+        updatePayload,
+        user_uuid,
+      );
+      return sendApiResponse(
+        res,
+        200,
+        { story: updatedStory },
+        "Story updated successfully",
+      );
     } catch (error: any) {
-      const status = error.statusCode || (error.message === "Story not found" ? 404 : 
-                     error.message.includes("not authorized") ? 403 : 400);
+      const status =
+        error.statusCode ||
+        (error.message === "Story not found"
+          ? 404
+          : error.message.includes("not authorized")
+            ? 403
+            : 400);
       return sendErrorResponse(res, status, error.message);
     }
   }
@@ -201,7 +248,7 @@ export class StoryController {
     try {
       const slug = req.params.slug as string;
       const user_uuid = req.user?.user_uuid;
-      
+
       if (!user_uuid) {
         return sendErrorResponse(res, 401, "User not authenticated");
       }
@@ -210,8 +257,13 @@ export class StoryController {
       const result = await StoryService.deleteStory(story, user_uuid);
       return sendApiResponse(res, 200, result, "Story deleted successfully");
     } catch (error: any) {
-      const status = error.statusCode || (error.message === "Story not found" ? 404 : 
-                     error.message.includes("not authorized") ? 403 : 400);
+      const status =
+        error.statusCode ||
+        (error.message === "Story not found"
+          ? 404
+          : error.message.includes("not authorized")
+            ? 403
+            : 400);
       return sendErrorResponse(res, status, error.message);
     }
   }
@@ -225,7 +277,12 @@ export class StoryController {
       }
 
       const stats = await StoryService.getUserStoryStats(user_uuid);
-      return sendApiResponse(res, 200, { stats }, "Story statistics fetched successfully");
+      return sendApiResponse(
+        res,
+        200,
+        { stats },
+        "Story statistics fetched successfully",
+      );
     } catch (error: any) {
       return sendErrorResponse(res, 500, error.message);
     }

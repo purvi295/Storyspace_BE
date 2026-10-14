@@ -18,8 +18,12 @@ import {
   myStoriesQuerySchema,
   allStoriesQuerySchema,
   storyInteractionQuerySchema,
+  storyUuidBodySchema,
+  storyUuidQuerySchema,
+  storyUuidWithPaginationQuerySchema,
 } from "../middlewares/story.validation";
 import { createCommentSchema } from "../middlewares/comment.validation";
+import { uuidParamSchema } from "../middlewares/common.validation";
 
 const router = Router();
 
@@ -93,67 +97,64 @@ router.get(
 // SOCIAL INTERACTIONS: LIKES & COMMENTS
 // ==========================================
 
-// POST /api/stories/:identifier/like - Like a story
+// POST /api/stories/like - Like a story
 router.post(
-  "/:identifier/like",
+  "/like",
   authenticateToken,
-  validate({ params: storyIdentifierParamSchema }),
+  validate({ body: storyUuidBodySchema }),
   (req, res) => likeController.likeStory(req, res)
 );
 
-// DELETE /api/stories/:identifier/like - Unlike a story
+// DELETE /api/stories/like - Unlike a story
 router.delete(
-  "/:identifier/like",
+  "/like",
   authenticateToken,
-  validate({ params: storyIdentifierParamSchema }),
+  validate({ body: storyUuidBodySchema }),
   (req, res) => likeController.unlikeStory(req, res)
 );
 
-// POST /api/stories/:identifier/like/toggle - Toggle like on a story
+// POST /api/stories/like/toggle - Toggle like on a story
 router.post(
-  "/:identifier/like/toggle",
+  "/like/toggle",
   authenticateToken,
-  validate({ params: storyIdentifierParamSchema }),
+  validate({ body: storyUuidBodySchema }),
   (req, res) => likeController.toggleLike(req, res)
 );
 
-// GET /api/stories/:identifier/likes - Get users who liked a story
+// GET /api/stories/likes - Get users who liked a story
 router.get(
-  "/:identifier/likes",
+  "/likes",
   optionalAuthenticateToken,
   validate({
-    params: storyIdentifierParamSchema,
-    query: storyInteractionQuerySchema,
+    query: storyUuidWithPaginationQuerySchema,
   }),
   (req, res) => likeController.getStoryLikes(req, res)
 );
 
-// GET /api/stories/:identifier/like/status - Check if authenticated user liked story
+// GET /api/stories/like/status - Check if authenticated user liked story
 router.get(
-  "/:identifier/like/status",
+  "/like/status",
   authenticateToken,
-  validate({ params: storyIdentifierParamSchema }),
+  validate({ query: storyUuidQuerySchema }),
   (req, res) => likeController.getStoryLikeStatus(req, res)
 );
 
-// POST /api/stories/:identifier/comments - Add a comment to a story
+// POST /api/stories/comments - Add a comment to a story
 router.post(
-  "/:identifier/comments",
+  "/comments",
   authenticateToken,
   validate({
-    params: storyIdentifierParamSchema,
     body: createCommentSchema,
   }),
   (req, res) => commentController.addComment(req, res)
 );
 
-// GET /api/stories/:identifier/comments - Get all comments on a story
+// GET /api/stories/comments - Get all comments on a story
 router.get(
-  "/:identifier/comments",
+  "/comments",
   optionalAuthenticateToken,
   validate({
-    params: storyIdentifierParamSchema,
-    query: storyInteractionQuerySchema,
+    query: storyUuidWithPaginationQuerySchema,
   }),
   (req, res) => commentController.getStoryComments(req, res)
 );

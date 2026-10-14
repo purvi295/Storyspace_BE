@@ -7,9 +7,10 @@ import {
   updateProfileSchema,
   userListQuerySchema,
   usernameParamSchema,
-  targetParamSchema,
   followPaginationQuerySchema,
+  userUuidBodySchema,
 } from "../middlewares/user.validation";
+import { userUuidParamSchema } from "../middlewares/common.validation";
 
 const router = Router();
 
@@ -17,7 +18,7 @@ const router = Router();
 router.get(
   "/list",
   validate({ query: userListQuerySchema }),
-  userController.getAllUsersList.bind(userController)
+  userController.getAllUsersList.bind(userController),
 );
 
 // PUT /api/users/profile - Update own profile (bio, avatar, name)
@@ -26,62 +27,62 @@ router.put(
   authenticateToken,
   uploadOptionalImage,
   validate(updateProfileSchema),
-  userController.updateProfile.bind(userController)
+  userController.updateProfile.bind(userController),
 );
 
 // ==========================================
 // Follow / Following Routes
 // ==========================================
 
-// POST /api/users/:target/follow - Follow user (target: user_uuid or username)
+// POST /api/users/follow - Follow user
 router.post(
-  "/:target/follow",
+  "/follow",
   authenticateToken,
-  validate({ params: targetParamSchema }),
-  userController.followUser.bind(userController)
+  validate({ body: userUuidBodySchema }),
+  userController.followUser.bind(userController),
 );
 
-// DELETE /api/users/:target/follow - Unfollow user
+// DELETE /api/users/follow - Unfollow user
 router.delete(
-  "/:target/follow",
+  "/follow",
   authenticateToken,
-  validate({ params: targetParamSchema }),
-  userController.unfollowUser.bind(userController)
+  validate({ body: userUuidBodySchema }),
+  userController.unfollowUser.bind(userController),
 );
 
-// GET /api/users/:target/followers - List followers
+// GET /api/users/followers - Get user's followers
 router.get(
-  "/:target/followers",
+  "/followers",
   validate({
-    params: targetParamSchema,
+    body: userUuidBodySchema,
     query: followPaginationQuerySchema,
   }),
-  userController.getFollowers.bind(userController)
+  userController.getFollowers.bind(userController),
 );
 
-// GET /api/users/:target/following - List followed users
+// GET /api/users/following - Get users followed by user
 router.get(
-  "/:target/following",
+  "/following",
   validate({
-    params: targetParamSchema,
+    body: userUuidBodySchema,
     query: followPaginationQuerySchema,
   }),
-  userController.getFollowing.bind(userController)
+  userController.getFollowing.bind(userController),
 );
 
-// GET /api/users/:target/is-following - Check if authenticated user follows target
+// GET /api/users/is-following - Check if authenticated user follows target
 router.get(
-  "/:target/is-following",
+  "/is-following",
   authenticateToken,
-  validate({ params: targetParamSchema }),
-  userController.isFollowing.bind(userController)
+  validate({ body: userUuidBodySchema }),
+  userController.isFollowing.bind(userController),
 );
 
 // GET /api/users/:username - Public profile + follower/following counts
 router.get(
-  "/:username",
-  validate({ params: usernameParamSchema }),
-  userController.getPublicProfile.bind(userController)
+  "/:user_uuid",
+  validate({ params: userUuidParamSchema }),
+  userController.getPublicProfile.bind(userController),
 );
 
 export default router;

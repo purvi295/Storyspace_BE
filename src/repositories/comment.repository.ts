@@ -1,59 +1,104 @@
+import { EntityManager, Repository } from "typeorm";
 import { AppDataSource } from "../database/data-source";
 import { Comment } from "../entities/comment.entity";
+import { calculateSkip } from "../utils/pagination";
 
 export class CommentRepository {
   private repository = AppDataSource.getRepository(Comment);
 
-  // Create a new comment
-  async createComment(data: {
-    story_uuid: string;
-    user_id: string;
-    content: string;
-  }): Promise<Comment> {
-    const comment = this.repository.create(data);
-    const saved = await this.repository.save(comment);
-    return this.findById(saved.id) as Promise<Comment>;
+  private getRepo(manager?: EntityManager): Repository<Comment> {
+    return manager ? manager.getRepository(Comment) : this.repository;
   }
 
-  // Find comment by primary key ID with relations
-  async findById(id: number): Promise<Comment | null> {
-    return this.repository.findOne({
-      where: { id },
-      relations: { "user": true, "story": true },
+  // Create a new comment
+  async createComment(
+    data: {
+      story_uuid: string;
+      user_id: string;
+      content: string;
+    },
+    manager?: EntityManager,
+  ): Promise<Comment> {
+    const repo = this.getRepo(manager);
+    const comment = repo.create({ ...data, is_delete: 0 });
+    const saved = await repo.save(comment);
+    return this.findById(saved.id, manager) as Promise<Comment>;
+  }
+
+  // Find comment by primary key ID with relations (excluding soft-deleted)
+  async findById(id: number, manager?: EntityManager): Promise<Comment | null> {
+    return this.getRepo(manager).findOne({
+      where: { id, is_delete: 0 },
+      relations: { user: true, story: true },
     });
   }
 
-  // Find paginated comments for a specific story
+  // Find comment by UUID with relations (excluding soft-deleted)
+  async findByUuid(comment_uuid: string, manager?: EntityManager): Promise<Comment | null> {
+    return this.getRepo(manager).findOne({
+      where: { comment_uuid, is_delete: 0 },
+      relations: { user: true, story: true },
+    });
+  }
+
+  // Find any comment by UUID regardless of is_delete (used for reactivation)
+  async findByUuidAny(comment_uuid: string, manager?: EntityManager): Promise<Comment | null> {
+    return this.getRepo(manager).findOne({
+      where: { comment_uuid },
+      relations: { user: true, story: true },
+    });
+  }
+
+  // Find paginated comments for a specific story (excluding soft-deleted)
   async findByStoryUuid(
     story_uuid: string,
-    options: { skip: number; take: number }
+    options: { page: number; limit: number },
+    manager?: EntityManager,
   ): Promise<{ comments: Comment[]; total: number }> {
-    const [comments, total] = await this.repository.findAndCount({
-      where: { story_uuid },
-      relations: { "user": true },
+    const repo = this.getRepo(manager);
+    const { page, limit } = options;
+    const skip = calculateSkip(page, limit);
+    const [comments, total] = await repo.findAndCount({
+      where: { story_uuid, is_delete: 0 },
+      relations: { user: true },
       order: { created_at: "DESC" },
-      skip: options.skip,
-      take: options.take,
+      skip,
+      take: limit,
     });
 
     return { comments, total };
   }
 
-  // Update a comment
-  async updateComment(id: number, content: string): Promise<Comment | null> {
-    await this.repository.update({ id }, { content });
-    return this.findById(id);
+  // Update a comment by UUID
+  async updateComment(
+    comment_uuid: string,
+    content: string,
+    manager?: EntityManager,
+  ): Promise<Comment | null> {
+    await this.getRepo(manager).update({ comment_uuid, is_delete: 0 }, { content });
+    return this.findByUuid(comment_uuid, manager);
   }
 
-  // Delete a comment
-  async deleteComment(id: number): Promise<boolean> {
-    const result = await this.repository.delete({ id });
+  // Soft delete a comment by UUID
+  async deleteComment(comment_uuid: string, manager?: EntityManager): Promise<boolean> {
+    const result = await this.getRepo(manager).update(
+      { comment_uuid, is_delete: 0 },
+      { is_delete: 1, deleted_at: new Date() },
+    );
     return (result.affected ?? 0) > 0;
   }
 
-  // Count comments for a story
-  async countComments(story_uuid: string): Promise<number> {
-    return this.repository.count({ where: { story_uuid } });
+  // Reactivate a soft-deleted comment
+  async reactivateComment(id: number, manager?: EntityManager): Promise<void> {
+    await this.getRepo(manager).update(
+      { id },
+      { is_delete: 0, deleted_at: null },
+    );
+  }
+
+  // Count comments for a story (excluding soft-deleted)
+  async countComments(story_uuid: string, manager?: EntityManager): Promise<number> {
+    return this.getRepo(manager).count({ where: { story_uuid, is_delete: 0 } });
   }
 }
 

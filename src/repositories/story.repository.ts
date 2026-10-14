@@ -1,39 +1,74 @@
-import { Brackets } from "typeorm";
+import { Brackets, EntityManager, Repository, SelectQueryBuilder } from "typeorm";
 import { AppDataSource } from "../database/data-source";
-import { CreateStoryDto, UpdateStoryDto, StoryQueryDto } from "../dtos/story.dto";
+import {
+  CreateStoryDto,
+  UpdateStoryDto,
+  StoryQueryDto,
+} from "../dtos/story.dto";
 import { Story } from "../entities/story.entity";
+import { Follow } from "../entities/follow.entity";
 import { STORY_STATUS, STORY_VISIBILITY } from "../config/constants";
+import { calculateSkip } from "../utils/pagination";
 
 export class StoryRepository {
   private repository = AppDataSource.getRepository(Story);
 
-  async create(storyData: CreateStoryDto & { user_uuid: string }) {
-    const story = this.repository.create(storyData);
-    return await this.repository.save(story);
+  private getRepo(manager?: EntityManager): Repository<Story> {
+    return manager ? manager.getRepository(Story) : this.repository;
   }
 
-  async findById(id: number) {
-    return await this.repository.findOneBy({ id });
+  async create(
+    storyData: CreateStoryDto & { user_uuid: string },
+    manager?: EntityManager,
+  ) {
+    const repo = this.getRepo(manager);
+    const story = repo.create({ ...storyData, is_delete: 0 });
+    return await repo.save(story);
   }
 
-  async findByUuid(uuid: string) {
-    return await this.repository.findOneBy({ story_uuid: uuid });
+  async findById(id: number, manager?: EntityManager) {
+    return this.getRepo(manager).findOneBy({ id, is_delete: 0 });
   }
 
-  async findBySlug(slug: string) {
-    return await this.repository.findOneBy({ slug });
+  async findByUuid(uuid: string, manager?: EntityManager) {
+    return this.getRepo(manager).findOneBy({ story_uuid: uuid, is_delete: 0 });
   }
 
-  async update(story: Story, storyData: UpdateStoryDto) {
-    return await this.repository.update(story, storyData);
+  async findBySlug(slug: string, manager?: EntityManager) {
+    return this.getRepo(manager).findOneBy({ slug, is_delete: 0 });
   }
 
-  async delete(story: Story) {
-    return await this.repository.delete(story);
+  async findByUuidAny(uuid: string, manager?: EntityManager) {
+    return this.getRepo(manager).findOneBy({ story_uuid: uuid });
   }
 
-  async findByTitle(title: string) {
-    return this.repository.findOneBy({ title: title });
+  async update(
+    story: Story,
+    storyData: UpdateStoryDto,
+    manager?: EntityManager,
+  ) {
+    return this.getRepo(manager).update(
+      { story_uuid: story.story_uuid, is_delete: 0 },
+      storyData,
+    );
+  }
+
+  async delete(story: Story, manager?: EntityManager) {
+    return this.getRepo(manager).update(
+      { story_uuid: story.story_uuid, is_delete: 0 },
+      { is_delete: 1, deleted_at: new Date() },
+    );
+  }
+
+  async reactivate(story_uuid: string, manager?: EntityManager) {
+    return this.getRepo(manager).update(
+      { story_uuid },
+      { is_delete: 0, deleted_at: null },
+    );
+  }
+
+  async findByTitle(title: string, manager?: EntityManager) {
+    return this.getRepo(manager).findOneBy({ title: title, is_delete: 0 });
   }
 
   /**
@@ -41,21 +76,27 @@ export class StoryRepository {
    * Only returns stories with status = 'published' and visibility = 'public'
    */
   async findPublicPublishedStories(options: {
-    skip: number;
-    take: number;
+    page: number;
+    limit: number;
+    searchQuery?: string;
   }): Promise<{ stories: Story[]; total: number }> {
+    const { page, limit } = options;
+
     const queryBuilder = this.repository
       .createQueryBuilder("story")
       .where("story.status = :status", { status: STORY_STATUS.PUBLISHED })
       .andWhere("story.visibility = :visibility", {
         visibility: STORY_VISIBILITY.PUBLIC,
       })
+      .andWhere("story.is_delete = :is_delete", { is_delete: 0 })
       .orderBy("story.published_at", "DESC")
       .addOrderBy("story.created_at", "DESC");
 
-    
     if (options.searchQuery) {
-      const words = options.searchQuery.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+      const words = options.searchQuery
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((w) => w.length > 2);
       if (words.length > 0) {
         queryBuilder.andWhere(
           new Brackets((qb) => {
@@ -65,22 +106,21 @@ export class StoryRepository {
               if (index === 0) {
                 qb.where(
                   `(LOWER(story.title) LIKE :${paramName} OR LOWER(story.content) LIKE :${paramName} OR LOWER(story.summary) LIKE :${paramName})`,
-                  { [paramName]: paramValue }
+                  { [paramName]: paramValue },
                 );
               } else {
                 qb.andWhere(
                   `(LOWER(story.title) LIKE :${paramName} OR LOWER(story.content) LIKE :${paramName} OR LOWER(story.summary) LIKE :${paramName})`,
-                  { [paramName]: paramValue }
+                  { [paramName]: paramValue },
                 );
               }
             });
-          })
+          }),
         );
       }
     }
 
-    const total = await queryBuilder.getCount();
-    const stories = await queryBuilder.skip(options.skip).take(options.take).getMany();
+    const [stories, total] = await queryBuilder.skip(calculateSkip(page, limit)).take(limit).getManyAndCount();
 
     return { stories, total };
   }
@@ -90,15 +130,18 @@ export class StoryRepository {
    */
   async findStoriesByUser(options: {
     user_uuid: string;
-    skip: number;
-    take: number;
+    page: number;
+    limit: number;
     status?: string;
     visibility?: string;
     allowedVisibilities?: string[];
   }): Promise<{ stories: Story[]; total: number }> {
+    const { page, limit } = options;
+
     const queryBuilder = this.repository
       .createQueryBuilder("story")
       .where("story.user_uuid = :user_uuid", { user_uuid: options.user_uuid })
+      .andWhere("story.is_delete = :is_delete", { is_delete: 0 })
       .orderBy("story.created_at", "DESC");
 
     if (options.status) {
@@ -111,17 +154,16 @@ export class StoryRepository {
       queryBuilder.andWhere("story.visibility = :visibility", {
         visibility: options.visibility,
       });
-    } else if (options.allowedVisibilities && options.allowedVisibilities.length > 0) {
+    } else if (
+      options.allowedVisibilities &&
+      options.allowedVisibilities.length > 0
+    ) {
       queryBuilder.andWhere("story.visibility IN (:...allowedVisibilities)", {
         allowedVisibilities: options.allowedVisibilities,
       });
     }
 
-    const total = await queryBuilder.getCount();
-    const stories = await queryBuilder
-      .skip(options.skip)
-      .take(options.take)
-      .getMany();
+    const [stories, total] = await queryBuilder.skip(calculateSkip(page, limit)).take(limit).getManyAndCount();
 
     return { stories, total };
   }
@@ -131,8 +173,8 @@ export class StoryRepository {
    * Enforces that followers_only stories are only visible to the author or followers of the author.
    */
   async findAllWithFilters(options: {
-    skip: number;
-    take: number;
+    page: number;
+    limit: number;
     status?: string;
     visibility?: string;
     author?: string;
@@ -140,8 +182,11 @@ export class StoryRepository {
     searchQuery?: string;
     isAdmin?: boolean;
   }): Promise<{ stories: Story[]; total: number }> {
+    const { page, limit } = options;
+
     const queryBuilder = this.repository
       .createQueryBuilder("story")
+      .where("story.is_delete = :is_delete", { is_delete: 0 })
       .orderBy("story.created_at", "DESC");
 
     if (options.isAdmin) {
@@ -164,21 +209,28 @@ export class StoryRepository {
                         publicVisibility: STORY_VISIBILITY.PUBLIC,
                       })
                       .orWhere(
-                        `story.visibility = :followersOnlyVisibility AND EXISTS (
-                          SELECT 1 FROM follows f 
-                          WHERE f.follower_id = :currentUserUuid 
-                          AND f.following_id = story.user_uuid
-                        )`,
+                        (subQb: SelectQueryBuilder<any>) => {
+                          const subQuery = subQb
+                            .subQuery()
+                            .select("1")
+                            .from(Follow, "f")
+                            .where("f.follower_id = :currentUserUuid")
+                            .andWhere("f.following_id = story.user_uuid")
+                            .andWhere("f.is_delete = 0")
+                            .getQuery();
+                          return `story.visibility = :followersOnlyVisibility AND EXISTS (${subQuery})`;
+                        },
                         {
-                          followersOnlyVisibility: STORY_VISIBILITY.FOLLOWERS_ONLY,
+                          followersOnlyVisibility:
+                            STORY_VISIBILITY.FOLLOWERS_ONLY,
                           currentUserUuid: options.currentUserUuid,
-                        }
+                        },
                       );
-                  })
+                  }),
                 );
-            })
+            }),
           );
-        })
+        }),
       );
     } else {
       queryBuilder
@@ -209,7 +261,10 @@ export class StoryRepository {
     }
 
     if (options.searchQuery) {
-      const words = options.searchQuery.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+      const words = options.searchQuery
+        .toLowerCase()
+        .split(/\s+/)
+        .filter((w) => w.length > 2);
       if (words.length > 0) {
         queryBuilder.andWhere(
           new Brackets((qb) => {
@@ -219,34 +274,30 @@ export class StoryRepository {
               if (index === 0) {
                 qb.where(
                   `(LOWER(story.title) LIKE :${paramName} OR LOWER(story.content) LIKE :${paramName} OR LOWER(story.summary) LIKE :${paramName})`,
-                  { [paramName]: paramValue }
+                  { [paramName]: paramValue },
                 );
               } else {
                 qb.andWhere(
                   `(LOWER(story.title) LIKE :${paramName} OR LOWER(story.content) LIKE :${paramName} OR LOWER(story.summary) LIKE :${paramName})`,
-                  { [paramName]: paramValue }
+                  { [paramName]: paramValue },
                 );
               }
             });
-          })
+          }),
         );
       }
     }
 
-    const total = await queryBuilder.getCount();
-    const stories = await queryBuilder
-      .skip(options.skip)
-      .take(options.take)
-      .getMany();
+    const [stories, total] = await queryBuilder.skip(calculateSkip(page, limit)).take(limit).getManyAndCount();
 
     return { stories, total };
   }
 
   /**
-   * Get story count by user
+   * Get story count by user (excluding soft-deleted)
    */
   async getStoryCountByUser(user_uuid: string): Promise<number> {
-    return await this.repository.count({ where: { user_uuid } });
+    return await this.repository.count({ where: { user_uuid, is_delete: 0 } });
   }
 }
 

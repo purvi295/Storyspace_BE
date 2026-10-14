@@ -3,35 +3,35 @@ import { commentController } from "../controllers/comment.controller";
 import { authenticateToken } from "../middlewares/auth.middleware";
 import validate from "../middlewares/validate.middleware";
 import {
-  commentIdParamSchema,
+  commentUuidParamSchema,
   updateCommentSchema,
 } from "../middlewares/comment.validation";
 
 const router = Router();
 
-// GET /api/comments/:id - Get a single comment by ID
+// GET /api/comments/:comment_uuid - Get a single comment by UUID
 router.get(
-  "/:id",
-  validate({ params: commentIdParamSchema }),
+  "/:comment_uuid",
+  validate({ params: commentUuidParamSchema }),
   (req, res) => commentController.getCommentById(req, res)
 );
 
-// PUT /api/comments/:id - Update own comment
+// PUT /api/comments/:comment_uuid - Update own comment
 router.put(
-  "/:id",
+  "/:comment_uuid",
   authenticateToken,
   validate({
-    params: commentIdParamSchema,
+    params: commentUuidParamSchema,
     body: updateCommentSchema,
   }),
   (req, res) => commentController.updateComment(req, res)
 );
 
-// DELETE /api/comments/:id - Delete a comment (comment author, story author, or admin)
+// DELETE /api/comments/:comment_uuid - Delete a comment (comment author, story author, or admin)
 router.delete(
-  "/:id",
+  "/:comment_uuid",
   authenticateToken,
-  validate({ params: commentIdParamSchema }),
+  validate({ params: commentUuidParamSchema }),
   (req, res) => commentController.deleteComment(req, res)
 );
 

@@ -65,6 +65,54 @@ export const targetParamSchema = Joi.object({
 });
 
 /**
+ * UUID body parameter (e.g. story_uuid for admin operations)
+ */
+export const uuidBodySchema = Joi.object({
+  story_uuid: Joi.string()
+    .trim()
+    .pattern(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    )
+    .required()
+    .messages({
+      "string.pattern.base": "Invalid UUID format",
+      "any.required": "UUID is required",
+    }),
+});
+
+/**
+ * UUID path parameter (e.g. user_uuid, story_uuid)
+ */
+export const uuidParamSchema = Joi.object({
+  story_uuid: Joi.string()
+    .trim()
+    .pattern(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    )
+    .required()
+    .messages({
+      "string.pattern.base": "Invalid UUID format",
+      "any.required": "UUID is required",
+    }),
+});
+
+/**
+ * UUID path parameter :user_uuid
+ */
+export const userUuidParamSchema = Joi.object({
+  user_uuid: Joi.string()
+    .trim()
+    .pattern(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    )
+    .required()
+    .messages({
+      "string.pattern.base": "Invalid UUID format",
+      "any.required": "User UUID is required",
+    }),
+});
+
+/**
  * Slug path parameter :slug
  */
 export const slugParamSchema = Joi.object({

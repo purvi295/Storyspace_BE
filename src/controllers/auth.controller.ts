@@ -2,13 +2,13 @@ import { Request, Response } from "express";
 import { authService } from "../services/auth.service";
 import { LoginDto, RegisterDto } from "../dtos/auth.dto";
 import { sendApiResponse, sendErrorResponse } from "../utils/api.response";
+import { AppError } from "../utils/api.error";
 
 export class AuthController {
   // Register new user
   async register(req: Request<{}, unknown, RegisterDto>, res: Response) {
     try {
-      const { email, password, username } = req.body;
-      const full_name = req.body.full_name;
+      const { email, password, username,full_name } = req.body;
 
       const result = await authService.register({
         email,
@@ -18,8 +18,9 @@ export class AuthController {
       });
 
       return sendApiResponse(res, 201, result, "User registered successfully");
-    } catch (error: any) {
-      return sendErrorResponse(res, error.statusCode || 400, error.message);
+    } catch (error: unknown) {
+      const err = error as AppError;
+      return sendErrorResponse(res, err.statusCode || 400, (error as Error).message);
     }
   }
 

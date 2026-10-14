@@ -5,9 +5,10 @@ import { Comment } from "../entities/comment.entity";
 import { Like } from "../entities/like.entity";
 import { storyRepository } from "../repositories/story.repository";
 import { commentRepository } from "../repositories/comment.repository";
+import { userRepository } from "../repositories/user.repository";
 import ApiError from "../utils/api.error";
 import { STORY_STATUS } from "../config/constants";
-import { PaginationMeta } from "../utils/api.response";
+import { calculatePagination } from "../utils/pagination";
 
 export class AdminService {
   private userRepository = AppDataSource.getRepository(User);
@@ -53,78 +54,50 @@ export class AdminService {
    * List all users with pagination and optional search (for admin panel)
    */
   async listUsers(options: { page: number; limit: number; search?: string }) {
-    const page = Math.max(1, options.page || 1);
-    const limit = Math.min(100, Math.max(1, options.limit || 10));
-    const skip = (page - 1) * limit;
+    const { page, limit } = calculatePagination(0, {
+      page: options.page,
+      limit: options.limit,
+    });
 
-    const queryBuilder = this.userRepository
-      .createQueryBuilder("user")
-      .select([
-        "user.id",
-        "user.user_uuid",
-        "user.email",
-        "user.username",
-        "user.full_name",
-        "user.role",
-        "user.avatar_url",
-        "user.created_at",
-        "user.updated_at",
-      ])
-      .orderBy("user.created_at", "DESC");
-
-    if (options.search && options.search.trim().length > 0) {
-      queryBuilder.where(
-        "LOWER(user.username) LIKE :search OR LOWER(user.email) LIKE :search OR LOWER(user.full_name) LIKE :search",
-        { search: `%${options.search.trim().toLowerCase()}%` }
-      );
-    }
-
-    const [users, total] = await queryBuilder
-      .skip(skip)
-      .take(limit)
-      .getManyAndCount();
-
-    const totalPages = Math.ceil(total / limit) || 1;
-    const pagination: PaginationMeta = {
+    const { users, total } = await userRepository.getAllUsersWithSearch({
       page,
       limit,
-      total,
-      totalPages,
-      currentPageTotal: users.length,
-      nextPage: page < totalPages ? page + 1 : null,
-      prevPage: page > 1 ? page - 1 : null,
-    };
+      search: options.search,
+    });
 
-    return { users, pagination };
+    return { users, pagination: calculatePagination(total, { page, limit }) };
   }
-
 
   /**
    * Delete any story as admin
    */
-  async deleteStory(identifier: string) {
-    const isUuid =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-        identifier
+  async deleteStory(story_uuid: string) {
+    const queryRunner = AppDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const story = await storyRepository.findByUuid(
+        story_uuid,
+        queryRunner.manager,
       );
 
-    let story = null;
-    if (isUuid) {
-      story = await storyRepository.findByUuid(identifier);
-    }
-    if (!story) {
-      story = await storyRepository.findBySlug(identifier);
-    }
-    if (!story && !isNaN(Number(identifier))) {
-      story = await storyRepository.findById(Number(identifier));
-    }
+      if (!story) {
+        throw ApiError.notFound("Story not found");
+      }
 
-    if (!story) {
-      throw ApiError.notFound("Story not found");
-    }
+      await storyRepository.delete(story, queryRunner.manager);
 
-    await storyRepository.delete(story);
-    return { success: true, message: "Story deleted successfully by administrator" };
+      await queryRunner.commitTransaction();
+      return {
+        message: "Story deleted successfully by administrator",
+      };
+    } catch (error: unknown) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 }
 

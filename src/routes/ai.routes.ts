@@ -11,7 +11,7 @@ const router = Router();
 const aiRateLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
   max: 20,
-  keyGenerator: (req) => req.user?.user_uuid ?? req.ip,
+  keyGenerator: (req) => req.user?.user_uuid ?? req.ip ?? "anonymous",
   message: { error: "Too many requests to AI. Please wait a minute." },
 });
 

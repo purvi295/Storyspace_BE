@@ -2,6 +2,7 @@
 import { Request, Response } from 'express';
 import { storageService } from '../services/storage.service';
 import { sendApiResponse, sendErrorResponse } from '../utils/api.response';
+import { AppError } from '../utils/api.error';
 
 export class UploadController {
   static async uploadImage(req: Request, res: Response) {
@@ -29,12 +30,12 @@ export class UploadController {
         },
         'Image uploaded successfully to Neon Object Storage'
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Neon storage upload error:', error);
       return sendErrorResponse(
         res,
         500,
-        error.message || 'Failed to upload image to Neon storage'
+        (error as Error).message || 'Failed to upload image to Neon Object Storage'
       );
     }
   }

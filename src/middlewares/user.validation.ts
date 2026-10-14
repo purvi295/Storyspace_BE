@@ -88,6 +88,20 @@ export const targetParamSchema = Joi.object({
 });
 
 /**
+ * Validates the request body containing user_uuid for follow operations
+ */
+export const userUuidBodySchema = Joi.object({
+  user_uuid: Joi.string()
+    .trim() 
+    .pattern(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
+    .required()
+    .messages({
+      "string.pattern.base": "Invalid UUID format",
+      "any.required": "User UUID is required",
+    }),
+});
+
+/**
  * Validates pagination query parameters for followers/following lists.
  */
 export const followPaginationQuerySchema = Joi.object({

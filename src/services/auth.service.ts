@@ -4,6 +4,7 @@ import { User } from "../entities/user.entity";
 import { LoginDto, RegisterDto } from "../dtos/auth.dto";
 import { authRepository } from "../repositories/auth.repository";
 import ApiError from "../utils/api.error";
+import { AppDataSource } from "../database/data-source";
 
 const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-in-production";
@@ -47,7 +48,9 @@ export class AuthService {
   }
 
   // Register user
-  async register(data: RegisterDto): Promise<{ user: Partial<User>; token: string }> {
+  async register(
+    data: RegisterDto,
+  ): Promise<{ user: Partial<User>; token: string }> {
     const { email, password, username, full_name } = data;
 
     const existingUser = await authRepository.findByEmailOrUsername(
@@ -57,7 +60,10 @@ export class AuthService {
 
     if (existingUser) {
       if (existingUser.email === email) {
-        throw new ApiError(409, "An account with this email address already exists");
+        throw new ApiError(
+          409,
+          "An account with this email address already exists",
+        );
       }
       if (existingUser.username === username) {
         throw new ApiError(409, "This username is already taken");
@@ -67,20 +73,36 @@ export class AuthService {
     // Hash password
     const hashedPassword = await this.hashPassword(password);
 
-    const user = await authRepository.create({
-      email,
-      password: hashedPassword,
-      username,
-      full_name,
-      role: "user",
-    });
+    const queryRunner = AppDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    // Generate token
-    const token = this.generateToken(user);
+    try {
+      const savedUser = await authRepository.create(
+        {
+          email,
+          password: hashedPassword,
+          username,
+          full_name,
+          role: "user",
+        },
+        queryRunner.manager,
+      );
 
-    // Return user without password
-    const { password: _, ...userWithoutPassword } = user;
-    return { user: userWithoutPassword, token };
+      await queryRunner.commitTransaction();
+
+      // Generate token
+      const token = this.generateToken(savedUser);
+
+      // Return user without password
+      const { password: _, ...userWithoutPassword } = savedUser;
+      return { user: userWithoutPassword, token };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   // Login user

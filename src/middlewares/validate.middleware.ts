@@ -57,18 +57,27 @@ export const validate = (
         }
       } else {
         // Assign the validated and type-coerced values back
-        try {
-          (req as any)[target] = value;
-        } catch {
-          // Fallback if property setter is restricted
-          Object.keys(req[target]).forEach((k) => delete (req as any)[target][k]);
-          Object.assign((req as any)[target], value);
+        // For query params, we can't replace the entire object (it's read-only), so we merge
+        if (target === "query") {
+          const targetObj = req[target] as Record<string, unknown>;
+          Object.keys(targetObj).forEach((k) => delete targetObj[k]);
+          Object.assign(targetObj, value);
+        } else {
+          try {
+            (req as unknown as Record<string, unknown>)[target] = value;
+          } catch {
+            // Fallback if property setter is restricted
+            const targetObj = req[target] as Record<string, unknown>;
+            Object.keys(targetObj).forEach((k) => delete targetObj[k]);
+            Object.assign(targetObj, value);
+            (req as unknown as Record<string, unknown>)[target] = targetObj;
+          }
         }
       }
     }
 
     if (errorMessages.length > 0) {
-      return next(ApiError.badRequest("Validation Error", errorMessages));
+      return next(ApiError.badRequest("Validation Error", { messages: errorMessages }));
     }
 
     return next();

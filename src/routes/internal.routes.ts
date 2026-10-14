@@ -33,14 +33,11 @@ router.get(
 
     const pageNum = Math.max(1, parseInt(page));
     const limitNum = Math.min(20, parseInt(limit) || 10);
-    const skip = (pageNum - 1) * limitNum;
 
     try {
-      // Uses your existing visibility logic: followers_only stories only visible to followers
-      // Let the database handle pagination AND keyword searching correctly
       const { stories: filtered, total } = await storyRepository.findAllWithFilters({
-        skip,
-        take: limitNum,
+        page: pageNum,
+        limit: limitNum,
         currentUserUuid: viewerId,
         searchQuery: q,
       });
@@ -78,7 +75,7 @@ router.get(
   "/stories/:uuid",
   internalKeyGuard,
   async (req: Request, res: Response) => {
-    const { uuid } = req.params;
+    const uuid = req.params.uuid as string;
     const { viewerId } = req.query as { viewerId?: string };
 
     try {

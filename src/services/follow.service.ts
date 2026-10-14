@@ -1,26 +1,15 @@
 import { followRepository } from "../repositories/follow.repository";
 import { userRepository } from "../repositories/user.repository";
 import ApiError from "../utils/api.error";
-import { PaginationMeta } from "../utils/api.response";
+import { calculatePagination } from "../utils/pagination";
+import { AppDataSource } from "../database/data-source";
 
 export class FollowService {
   /**
-   * Helper to resolve target user by either user_uuid or username
+   * Helper to resolve target user by UUID
    */
-  private async resolveTargetUser(identifier: string) {
-    // Check if identifier is a valid UUID pattern
-    const isUuid =
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-        identifier
-      );
-
-    let user = null;
-    if (isUuid) {
-      user = await userRepository.findByUuid(identifier);
-    }
-    if (!user) {
-      user = await userRepository.findByUsername(identifier);
-    }
+  private async resolveTargetUser(user_uuid: string) {
+    const user = await userRepository.findByUuid(user_uuid);
 
     if (!user) {
       throw ApiError.notFound("User not found");
@@ -33,78 +22,125 @@ export class FollowService {
    * Follow a target user
    */
   async followUser(followerUuid: string, targetIdentifier: string) {
-    const targetUser = await this.resolveTargetUser(targetIdentifier);
+    const queryRunner = AppDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    if (followerUuid === targetUser.user_uuid) {
-      throw ApiError.badRequest("You cannot follow yourself");
-    }
+    try {
+      const targetUser = await this.resolveTargetUser(targetIdentifier);
 
-    const existingFollow = await followRepository.findFollow(
-      followerUuid,
-      targetUser.user_uuid
-    );
+      if (followerUuid === targetUser.user_uuid) {
+        throw ApiError.badRequest("You cannot follow yourself");
+      }
 
-    if (existingFollow) {
+      const existingFollow = await followRepository.findFollowAny(
+        followerUuid,
+        targetUser.user_uuid,
+        queryRunner.manager,
+      );
+
+      if (existingFollow) {
+        // Already an active follow -> nothing to do
+        if (existingFollow.is_delete === 0) {
+          await queryRunner.commitTransaction();
+          return {
+            alreadyFollowing: true,
+            message: `You are already following @${targetUser.username}`,
+            follower_details: {
+              user_uuid: targetUser.user_uuid,
+              username: targetUser.username,
+              full_name: targetUser.full_name,
+            },
+          };
+        }
+
+        // Previously unfollowed -> reactivate the same row instead of inserting a duplicate
+        await followRepository.reactivateFollow(
+          existingFollow.id,
+          queryRunner.manager,
+        );
+        await queryRunner.commitTransaction();
+        return {
+          alreadyFollowing: false,
+          message: `You are now following @${targetUser.username}`,
+          follower_details: {
+            id: existingFollow.id,
+            user_uuid: targetUser.user_uuid,
+            username: targetUser.username,
+            full_name: targetUser.full_name,
+            avatar_url: targetUser.avatar_url,
+            created_at: existingFollow.created_at,
+          },
+        };
+      }
+
+      const follow = await followRepository.createFollow(
+        followerUuid,
+        targetUser.user_uuid,
+        queryRunner.manager,
+      );
+
+      await queryRunner.commitTransaction();
       return {
-        alreadyFollowing: true,
-        message: `You are already following @${targetUser.username}`,
-        target: {
+        // alreadyFollowing: false,
+        message: `You are now following @${targetUser.username}`,
+        follower_details: {
+          id: follow.id,
           user_uuid: targetUser.user_uuid,
           username: targetUser.username,
           full_name: targetUser.full_name,
+          avatar_url: targetUser.avatar_url,
+          created_at: follow.created_at,
         },
       };
+    } catch (error: unknown) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
-
-    const follow = await followRepository.createFollow(
-      followerUuid,
-      targetUser.user_uuid
-    );
-
-    return {
-      alreadyFollowing: false,
-      message: `You are now following @${targetUser.username}`,
-      follow: {
-        id: follow.id,
-        follower_id: follow.follower_id,
-        following_id: follow.following_id,
-        created_at: follow.created_at,
-      },
-      target: {
-        user_uuid: targetUser.user_uuid,
-        username: targetUser.username,
-        full_name: targetUser.full_name,
-        avatar_url: targetUser.avatar_url,
-      },
-    };
   }
 
   /**
    * Unfollow a target user
    */
   async unfollowUser(followerUuid: string, targetIdentifier: string) {
-    const targetUser = await this.resolveTargetUser(targetIdentifier);
+    const queryRunner = AppDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    if (followerUuid === targetUser.user_uuid) {
-      throw ApiError.badRequest("You cannot unfollow yourself");
-    }
+    try {
+      const targetUser = await this.resolveTargetUser(targetIdentifier);
 
-    const deleted = await followRepository.deleteFollow(
-      followerUuid,
-      targetUser.user_uuid
-    );
+      if (followerUuid === targetUser.user_uuid) {
+        throw ApiError.badRequest("You cannot unfollow yourself");
+      }
 
-    if (!deleted) {
+      const deleted = await followRepository.deleteFollow(
+        followerUuid,
+        targetUser.user_uuid,
+        queryRunner.manager,
+      );
+
+      await queryRunner.commitTransaction();
+
+      if (!deleted) {
+        return {
+          message: `You were not following @${targetUser.username}`,
+          unfollowed: false,
+        };
+      }
+
       return {
-        message: `You were not following @${targetUser.username}`,
-        unfollowed: false,
+        message: `Successfully unfollowed @${targetUser.username}`,
+        unfollowed: true,
       };
+    } catch (error: unknown) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
-
-    return {
-      message: `Successfully unfollowed @${targetUser.username}`,
-      unfollowed: true,
-    };
   }
 
   /**
@@ -113,16 +149,14 @@ export class FollowService {
   async getFollowers(targetIdentifier: string, pageInput = 1, limitInput = 10) {
     const targetUser = await this.resolveTargetUser(targetIdentifier);
 
-    const page = Number.isInteger(pageInput) && pageInput > 0 ? pageInput : 1;
-    const limit =
-      Number.isInteger(limitInput) && limitInput > 0
-        ? Math.min(limitInput, 100)
-        : 10;
-    const skip = (page - 1) * limit;
+    const { page, limit } = calculatePagination(0, {
+      page: pageInput,
+      limit: limitInput,
+    });
 
     const { follows, total } = await followRepository.getFollowers(
       targetUser.user_uuid,
-      { skip, take: limit }
+      { page, limit },
     );
 
     const followers = follows
@@ -135,25 +169,9 @@ export class FollowService {
         };
       });
 
-    const totalPages = Math.ceil(total / limit) || 1;
-    const pagination: PaginationMeta = {
-      page,
-      limit,
-      total,
-      totalPages,
-      currentPageTotal: followers.length,
-      nextPage: page < totalPages ? page + 1 : null,
-      prevPage: page > 1 ? page - 1 : null,
-    };
-
     return {
-      user: {
-        user_uuid: targetUser.user_uuid,
-        username: targetUser.username,
-        full_name: targetUser.full_name,
-      },
       followers,
-      pagination,
+      pagination: calculatePagination(total, { page, limit }),
     };
   }
 
@@ -163,16 +181,14 @@ export class FollowService {
   async getFollowing(targetIdentifier: string, pageInput = 1, limitInput = 10) {
     const targetUser = await this.resolveTargetUser(targetIdentifier);
 
-    const page = Number.isInteger(pageInput) && pageInput > 0 ? pageInput : 1;
-    const limit =
-      Number.isInteger(limitInput) && limitInput > 0
-        ? Math.min(limitInput, 100)
-        : 10;
-    const skip = (page - 1) * limit;
+    const { page, limit } = calculatePagination(0, {
+      page: pageInput,
+      limit: limitInput,
+    });
 
     const { follows, total } = await followRepository.getFollowing(
       targetUser.user_uuid,
-      { skip, take: limit }
+      { page, limit },
     );
 
     const following = follows
@@ -185,17 +201,6 @@ export class FollowService {
         };
       });
 
-    const totalPages = Math.ceil(total / limit) || 1;
-    const pagination: PaginationMeta = {
-      page,
-      limit,
-      total,
-      totalPages,
-      currentPageTotal: following.length,
-      nextPage: page < totalPages ? page + 1 : null,
-      prevPage: page > 1 ? page - 1 : null,
-    };
-
     return {
       user: {
         user_uuid: targetUser.user_uuid,
@@ -203,7 +208,7 @@ export class FollowService {
         full_name: targetUser.full_name,
       },
       following,
-      pagination,
+      pagination: calculatePagination(total, { page, limit }),
     };
   }
 
@@ -211,13 +216,12 @@ export class FollowService {
    * Check if a user is following another user
    */
   async isFollowing(followerUuid: string, targetIdentifier: string) {
-    const targetUser = await this.resolveTargetUser(targetIdentifier);
-    
-    if (followerUuid === targetUser.user_uuid) {
+    const followedUser = await this.resolveTargetUser(targetIdentifier);
+
+    if (followerUuid === followedUser.user_uuid) {
       return {
-        follower_uuid: followerUuid,
-        target_uuid: targetUser.user_uuid,
-        target_username: targetUser.username,
+        current_user_uuid: followerUuid,
+        followed_user_uuid: followedUser.user_uuid,
         isFollowing: false,
         isSelf: true,
       };
@@ -225,13 +229,12 @@ export class FollowService {
 
     const follow = await followRepository.findFollow(
       followerUuid,
-      targetUser.user_uuid
+      followedUser.user_uuid,
     );
 
     return {
-      follower_uuid: followerUuid,
-      target_uuid: targetUser.user_uuid,
-      target_username: targetUser.username,
+      current_user_uuid: followerUuid,
+      followed_user_uuid: followedUser.user_uuid,
       isFollowing: !!follow,
       isSelf: false,
     };

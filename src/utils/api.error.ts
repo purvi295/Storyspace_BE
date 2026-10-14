@@ -1,16 +1,27 @@
 // src/utils/api.error.ts
 // Custom Operational API Error Class
 
+export interface ErrorDetails {
+  [key: string]: unknown;
+}
+
+export interface AppError extends Error {
+  statusCode?: number;
+  details?: ErrorDetails;
+  isOperational?: boolean;
+  success?: boolean;
+}
+
 export class ApiError extends Error {
   public statusCode: number;
-  public details: any;
+  public details: ErrorDetails;
   public isOperational: boolean;
   public success: boolean;
 
   constructor(
     statusCode: number,
     message: string,
-    details: any = null,
+    details: ErrorDetails = {},
     isOperational = true,
   ) {
     super(message);
@@ -20,12 +31,8 @@ export class ApiError extends Error {
     this.success = false;
   }
 
-  static badRequest(message = "Bad Request", details: any = null): ApiError {
+  static badRequest(message = "Bad Request", details: ErrorDetails = {}): ApiError {
     return new ApiError(400, message, details);
-  }
-
-  static notFound(message = "Resource Not Found"): ApiError {
-    return new ApiError(404, message);
   }
 
   static unauthorized(message = "Unauthorized"): ApiError {
@@ -36,12 +43,16 @@ export class ApiError extends Error {
     return new ApiError(403, message);
   }
 
-  static conflict(message = "Conflict", details: any = null): ApiError {
+  static notFound(message = "Not Found"): ApiError {
+    return new ApiError(404, message);
+  }
+
+  static conflict(message = "Conflict", details: ErrorDetails = {}): ApiError {
     return new ApiError(409, message, details);
   }
 
   static internal(message = "Internal Server Error"): ApiError {
-    return new ApiError(500, message, null, false);
+    return new ApiError(500, message, {}, false);
   }
 }
 

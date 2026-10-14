@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "a0d230a8-9aa6-4a79-b354-6e5a1dc18f72",
     "name": "Learning Task API",
-    "description": "Postman collection for the routes mounted in src/app.ts.\n\nRegister or Login saves token, username, and userUuid. Admin Login saves adminToken. Create Story saves storySlug, storyUuid, and storyIdentifier. Add Comment saves commentId.\n\nBodies include every accepted field, including optional ones, with sample values. Remove a query param when you do not want that filter.\n\nStory status: draft, published.\nStory visibility: public, followers_only.\nStory identifiers accept a slug, story UUID, or numeric id.\nUsernames may contain letters, numbers, underscores, hyphens, and periods.",
+    "description": "Postman collection for the routes mounted in src/app.ts.\n\nRegister or Login saves token, username, and userUuid. Admin Login saves adminToken. Create Story saves storySlug, storyUuid, and storyIdentifier. Add Comment saves commentUuid.\n\nBodies include every accepted field, including optional ones, with sample values. Remove a query param when you do not want that filter.\n\nStory status: draft, published.\nStory visibility: public, followers_only.\nStory identifiers: public endpoints use slug, interaction endpoints (likes/comments) pass story_uuid in query params for GET requests or body for POST/DELETE.\nUser identifiers: public profile uses username, follow endpoints pass user_uuid in request body.\nUsernames may contain letters, numbers, underscores, hyphens, and periods.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -67,8 +67,8 @@
       "type": "string"
     },
     {
-      "key": "commentId",
-      "value": "1",
+      "key": "commentUuid",
+      "value": "",
       "type": "string"
     },
     {
@@ -400,9 +400,23 @@
                   ]
                 },
                 "method": "POST",
-                "header": [],
-                "url": "{{baseUrl}}/api/users/{{targetUsername}}/follow",
-                "description": "No body. targetUsername is a username or user UUID, 3 to 100 characters."
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"user_uuid\": \"{{userUuid}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": "{{baseUrl}}/api/users/follow",
+                "description": "Body must contain user_uuid."
               }
             },
             {
@@ -419,25 +433,52 @@
                   ]
                 },
                 "method": "DELETE",
-                "header": [],
-                "url": "{{baseUrl}}/api/users/{{targetUsername}}/follow",
-                "description": "No body. targetUsername is a username or user UUID."
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"user_uuid\": \"{{userUuid}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": "{{baseUrl}}/api/users/follow",
+                "description": "Body must contain user_uuid."
               }
             },
             {
               "name": "List Followers",
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"user_uuid\": \"{{userUuid}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
                 "url": {
-                  "raw": "{{baseUrl}}/api/users/{{username}}/followers?page=1&limit=10",
+                  "raw": "{{baseUrl}}/api/users/followers?page=1&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
                   "path": [
                     "api",
                     "users",
-                    "{{username}}",
                     "followers"
                   ],
                   "query": [
@@ -453,23 +494,36 @@
                     }
                   ]
                 },
-                "description": "No body. Optional query params: page, limit."
+                "description": "Body must contain user_uuid. Optional query params: page, limit."
               }
             },
             {
               "name": "List Following",
               "request": {
                 "method": "GET",
-                "header": [],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"user_uuid\": \"{{userUuid}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
                 "url": {
-                  "raw": "{{baseUrl}}/api/users/{{username}}/following?page=1&limit=10",
+                  "raw": "{{baseUrl}}/api/users/following?page=1&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
                   "path": [
                     "api",
                     "users",
-                    "{{username}}",
                     "following"
                   ],
                   "query": [
@@ -485,7 +539,7 @@
                     }
                   ]
                 },
-                "description": "No body. Optional query params: page, limit."
+                "description": "Body must contain user_uuid. Optional query params: page, limit."
               }
             },
             {
@@ -502,9 +556,23 @@
                   ]
                 },
                 "method": "GET",
-                "header": [],
-                "url": "{{baseUrl}}/api/users/{{targetUsername}}/is-following",
-                "description": "No body. targetUsername is a username or user UUID."
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"user_uuid\": \"{{userUuid}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": "{{baseUrl}}/api/users/is-following",
+                "description": "Body must contain user_uuid."
               }
             }
           ]
@@ -875,9 +943,23 @@
                   ]
                 },
                 "method": "POST",
-                "header": [],
-                "url": "{{baseUrl}}/api/stories/{{storyIdentifier}}/like",
-                "description": "No body. storyIdentifier is a slug, story UUID, or numeric id."
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"story_uuid\": \"{{storyUuid}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": "{{baseUrl}}/api/stories/like",
+                "description": "Body must contain story_uuid."
               }
             },
             {
@@ -894,9 +976,23 @@
                   ]
                 },
                 "method": "DELETE",
-                "header": [],
-                "url": "{{baseUrl}}/api/stories/{{storyIdentifier}}/like",
-                "description": "No body."
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"story_uuid\": \"{{storyUuid}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": "{{baseUrl}}/api/stories/like",
+                "description": "Body must contain story_uuid."
               }
             },
             {
@@ -913,9 +1009,23 @@
                   ]
                 },
                 "method": "POST",
-                "header": [],
-                "url": "{{baseUrl}}/api/stories/{{storyIdentifier}}/like/toggle",
-                "description": "No body."
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"story_uuid\": \"{{storyUuid}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": "{{baseUrl}}/api/stories/like/toggle",
+                "description": "Body must contain story_uuid."
               }
             },
             {
@@ -923,18 +1033,31 @@
               "request": {
                 "method": "GET",
                 "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
                 "url": {
-                  "raw": "{{baseUrl}}/api/stories/{{storyIdentifier}}/likes?page=1&limit=10",
+                  "raw": "{{baseUrl}}/api/stories/likes?story_uuid={{storyUuid}}&page=1&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
                   "path": [
                     "api",
                     "stories",
-                    "{{storyIdentifier}}",
                     "likes"
                   ],
                   "query": [
+                    {
+                      "key": "story_uuid",
+                      "value": "{{storyUuid}}",
+                      "description": "Required. Story UUID."
+                    },
                     {
                       "key": "page",
                       "value": "1",
@@ -947,7 +1070,7 @@
                     }
                   ]
                 },
-                "description": "No body. Optional auth. Optional query params: page, limit."
+                "description": "Query param must contain story_uuid. Optional auth. Optional query params: page, limit."
               }
             },
             {
@@ -965,8 +1088,35 @@
                 },
                 "method": "GET",
                 "header": [],
-                "url": "{{baseUrl}}/api/stories/{{storyIdentifier}}/like/status",
-                "description": "No body."
+                "body": {
+                  "mode": "raw",
+                  "raw": "",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/stories/like/status?story_uuid={{storyUuid}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "stories",
+                    "like",
+                    "status"
+                  ],
+                  "query": [
+                    {
+                      "key": "story_uuid",
+                      "value": "{{storyUuid}}",
+                      "description": "Required. Story UUID."
+                    }
+                  ]
+                },
+                "description": "Query param must contain story_uuid."
               }
             }
           ]
@@ -983,7 +1133,7 @@
                     "exec": [
                       "const body = pm.response.json();",
                       "const comment = body.data || {};",
-                      "if (comment.id) pm.collectionVariables.set('commentId', String(comment.id));"
+                      "if (comment.comment_uuid) pm.collectionVariables.set('commentUuid', comment.comment_uuid);"
                     ],
                     "type": "text/javascript"
                   }
@@ -1009,15 +1159,15 @@
                 ],
                 "body": {
                   "mode": "raw",
-                  "raw": "{\n  \"content\": \"{{commentContent}}\"\n}",
+                  "raw": "{\n  \"story_uuid\": \"{{storyUuid}}\",\n  \"content\": \"{{commentContent}}\"\n}",
                   "options": {
                     "raw": {
                       "language": "json"
                     }
                   }
                 },
-                "url": "{{baseUrl}}/api/stories/{{storyIdentifier}}/comments",
-                "description": "Required:\n- content: 1 to 2000 characters. Driven by bulk_add_comment.csv commentContent column."
+                "url": "{{baseUrl}}/api/stories/comments",
+                "description": "Required:\n- story_uuid: story UUID\n- content: 1 to 2000 characters. Driven by bulk_add_comment.csv commentContent column."
               }
             },
             {
@@ -1025,18 +1175,31 @@
               "request": {
                 "method": "GET",
                 "header": [],
+                "body": {
+                  "mode": "raw",
+                  "raw": "",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
                 "url": {
-                  "raw": "{{baseUrl}}/api/stories/{{storyIdentifier}}/comments?page=1&limit=10",
+                  "raw": "{{baseUrl}}/api/stories/comments?story_uuid={{storyUuid}}&page=1&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
                   "path": [
                     "api",
                     "stories",
-                    "{{storyIdentifier}}",
                     "comments"
                   ],
                   "query": [
+                    {
+                      "key": "story_uuid",
+                      "value": "{{storyUuid}}",
+                      "description": "Required. Story UUID."
+                    },
                     {
                       "key": "page",
                       "value": "1",
@@ -1049,7 +1212,7 @@
                     }
                   ]
                 },
-                "description": "No body. Optional auth. Optional query params: page, limit."
+                "description": "Query param must contain story_uuid. Optional auth. Optional query params: page, limit."
               }
             },
             {
@@ -1057,8 +1220,8 @@
               "request": {
                 "method": "GET",
                 "header": [],
-                "url": "{{baseUrl}}/api/comments/{{commentId}}",
-                "description": "No body. commentId is a positive integer."
+                "url": "{{baseUrl}}/api/comments/{{commentUuid}}",
+                "description": "No body. commentUuid is a UUID string."
               }
             },
             {
@@ -1090,7 +1253,7 @@
                     }
                   }
                 },
-                "url": "{{baseUrl}}/api/comments/{{commentId}}",
+                "url": "{{baseUrl}}/api/comments/{{commentUuid}}",
                 "description": "Required:\n- content: 1 to 2000 characters"
               }
             },
@@ -1109,7 +1272,7 @@
                 },
                 "method": "DELETE",
                 "header": [],
-                "url": "{{baseUrl}}/api/comments/{{commentId}}",
+                "url": "{{baseUrl}}/api/comments/{{commentUuid}}",
                 "description": "No body. Allowed for the comment author, the story author, or an admin."
               }
             }
@@ -1249,9 +1412,23 @@
                   ]
                 },
                 "method": "DELETE",
-                "header": [],
-                "url": "{{baseUrl}}/api/admin/stories/{{storyIdentifier}}",
-                "description": "No body. Deletes any story. storyIdentifier is a slug, story UUID, or numeric id."
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"story_uuid\": \"{{storyUuid}}\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": "{{baseUrl}}/api/admin/stories",
+                "description": "Body must contain story_uuid. Deletes any story."
               }
             },
             {
@@ -1269,8 +1446,8 @@
                 },
                 "method": "DELETE",
                 "header": [],
-                "url": "{{baseUrl}}/api/admin/comments/{{commentId}}",
-                "description": "No body. Deletes any comment. commentId is a positive integer."
+                "url": "{{baseUrl}}/api/admin/comments/{{commentUuid}}",
+                "description": "No body. Deletes any comment. commentUuid is a UUID string."
               }
             }
           ]

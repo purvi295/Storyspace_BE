@@ -3,11 +3,13 @@ import { UpdateUserProfileDto } from "../dtos/user.dto";
 import { userRepository } from "../repositories/user.repository";
 import { followRepository } from "../repositories/follow.repository";
 import ApiError from "../utils/api.error";
+import { calculatePagination } from "../utils/pagination";
+import { AppDataSource } from "../database/data-source";
 
 export class UserService {
   /** Return a public profile without the password hash. */
-  async getPublicProfile(username: string) {
-    const user = await userRepository.findByUsername(username);
+  async getPublicProfile(userUuid: any) {
+    const user = await userRepository.findByUuid(userUuid);
 
     if (!user) {
       throw ApiError.notFound("User not found");
@@ -24,44 +26,68 @@ export class UserService {
 
   /** Update only the authenticated user's allowed profile fields. */
   async updateProfile(userUuid: string, data: UpdateUserProfileDto) {
-    const updatedUser = await userRepository.updateProfile(userUuid, data);
+    const queryRunner = AppDataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    if (!updatedUser) {
-      throw ApiError.notFound("User not found");
+    try {
+      // Only check for a username conflict when the username is actually
+      // being changed. Guard against an undefined username (e.g. when only
+      // bio/avatar is updated) and allow the user to keep their own username.
+      if (data.username) {
+        const existingUser = await userRepository.findByUsername(
+          data.username,
+          queryRunner.manager,
+        );
+
+        if (existingUser && existingUser.user_uuid !== userUuid) {
+          throw ApiError.conflict(
+            "Username already exists, Please use another username.",
+          );
+        }
+      }
+
+      const updatedUser = await userRepository.updateProfile(
+        userUuid,
+        data,
+        queryRunner.manager,
+      );
+
+      if (!updatedUser) {
+        throw ApiError.notFound("User not found");
+      }
+
+      const { password, ...userWithoutPassword } = updatedUser;
+
+      await queryRunner.commitTransaction();
+      return userWithoutPassword;
+    } catch (error: unknown) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
-
-    const { password, ...userWithoutPassword } = updatedUser;
-    return userWithoutPassword;
   }
 
-  /** Return non-admin users with safe pagination defaults. */
-  async getAllUsers(pageInput: number, limitInput: number) {
-    const page = Number.isInteger(pageInput) && pageInput > 0 ? pageInput : 1;
-    const limit =
-      Number.isInteger(limitInput) && limitInput > 0
-        ? Math.min(limitInput, 100)
-        : 10;
-    const skip = (page - 1) * limit;
+  /** Return non-admin users with safe pagination defaults and search. */
+  async getAllUsers(pageInput: number, limitInput: number, search?: string) {
+    const { page, limit } = calculatePagination(0, {
+      page: pageInput,
+      limit: limitInput,
+    });
 
     const { users, total } = await userRepository.getAllUsers({
-      skip,
-      take: limit,
+      page,
+      limit,
       role: ROLES.USER,
+      search,
     });
 
     return {
       users: users.map(
         ({ password, ...userWithoutPassword }) => userWithoutPassword,
       ),
-      pagination: {
-        currentPageTotal: users.length,
-        page,
-        nextPage: page < Math.ceil(total / limit) ? page + 1 : null,
-        prevPage: page > 1 ? page - 1 : null,
-        limit,
-        total,
-        totalPages: Math.ceil(total / limit),
-      },
+      pagination: calculatePagination(total, { page, limit }),
     };
   }
 }

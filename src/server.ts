@@ -9,7 +9,7 @@ import { Server } from 'http';
 
 const PORT = config.port;
 
-let server: Server;
+let server: Server | undefined;
 
 const startServer = async () => {
   try {

@@ -3,7 +3,11 @@
 
 import { Response } from 'express';
 
-export interface PaginationMeta {
+export interface ResponseMeta {
+  [key: string]: unknown;
+}
+
+export interface PaginationMeta extends ResponseMeta {
   page: number;
   limit: number;
   total: number;
@@ -13,23 +17,19 @@ export interface PaginationMeta {
   prevPage?: number | null;
 }
 
-export class ApiResponse<T = any> {
+export class ApiResponse<T = unknown> {
   public success: boolean;
   public statusCode: number;
   public message: string;
   public data?: T;
-  public meta?: any;
+  public meta?: ResponseMeta;
 
-  constructor(statusCode: number, data: T = null as any, message = 'Success', meta: any = null) {
+  constructor(statusCode: number, data: T = {} as T, message = 'Success', meta: ResponseMeta = {}) {
     this.success = statusCode >= 200 && statusCode < 300;
     this.statusCode = statusCode;
     this.message = message;
-    if (data !== null && data !== undefined) {
-      this.data = data;
-    }
-    if (meta) {
-      this.meta = meta;
-    }
+    this.data = data;
+    this.meta = meta;
   }
 
   send(res: Response): Response {
@@ -43,21 +43,17 @@ export const sendApiResponse = <T>(
   statusCode: number,
   data: T,
   message = 'Success',
-): Response => new ApiResponse(statusCode, data, message).send(res);
+  meta?: ResponseMeta
+): Response => new ApiResponse(statusCode, data, message, meta).send(res);
 
 /** Send the standard error response shape used by the global error handler. */
 export const sendErrorResponse = (
   res: Response,
   statusCode: number,
   message: string,
-  details?: unknown,
+  meta?: ResponseMeta
 ): Response =>
-  res.status(statusCode).json({
-    success: false,
-    statusCode,
-    message,
-    ...(details !== undefined && { details }),
-  });
+  new ApiResponse<null>(statusCode, null, message, meta).send(res);
 
 /** Send a standard response with pagination information in `meta`. */
 export const sendPaginatedResponse = <T>(
