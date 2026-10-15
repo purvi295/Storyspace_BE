@@ -2,12 +2,13 @@ import { likeRepository } from "../repositories/like.repository";
 import { storyRepository } from "../repositories/story.repository";
 import { followRepository } from "../repositories/follow.repository";
 import ApiError from "../utils/api.error";
-import { calculatePagination } from "../utils/pagination";
+import { calculatePagination, IPaginatedResult } from "../utils/pagination";
 import { STORY_STATUS, STORY_VISIBILITY, ROLES } from "../config/constants";
 import { AppDataSource } from "../database/data-source";
+import { Story } from "../entities/story.entity";
 
 export class LikeService {
-  private async checkStoryAccess(story: any, user_uuid?: string, userRole?: string) {
+  private async checkStoryAccess(story: Story, user_uuid?: string, userRole?: string) {
     const isAuthor = Boolean(user_uuid && user_uuid === story.user_uuid);
     const isAdmin = userRole === ROLES.ADMIN;
 
@@ -199,7 +200,13 @@ export class LikeService {
   /**
    * Get paginated likes and total count for a story
    */
-  async getStoryLikes(storyIdentifier: string, pageInput = 1, limitInput = 10, viewerUuid?: string, userRole?: string) {
+  async getStoryLikes(
+    storyIdentifier: string,
+    pageInput = 1,
+    limitInput = 10,
+    viewerUuid?: string,
+    userRole?: string,
+  ): Promise<IPaginatedResult<{ liked_at: Date; [key: string]: any }> & { story: { story_uuid: string; title: string; slug: string } }> {
     const story = await this.resolveStory(storyIdentifier);
     await this.checkStoryAccess(story, viewerUuid, userRole);
 
@@ -229,8 +236,8 @@ export class LikeService {
         title: story.title,
         slug: story.slug,
       },
-      likes: users,
-      pagination: calculatePagination(total, { page, limit }),
+      data: users,
+      meta: calculatePagination(total, { page, limit }),
     };
   }
 

@@ -1,7 +1,7 @@
 import { followRepository } from "../repositories/follow.repository";
 import { userRepository } from "../repositories/user.repository";
 import ApiError from "../utils/api.error";
-import { calculatePagination } from "../utils/pagination";
+import { calculatePagination, IPaginatedResult } from "../utils/pagination";
 import { AppDataSource } from "../database/data-source";
 
 export class FollowService {
@@ -146,7 +146,11 @@ export class FollowService {
   /**
    * Get paginated followers of a user
    */
-  async getFollowers(targetIdentifier: string, pageInput = 1, limitInput = 10) {
+  async getFollowers(
+    targetIdentifier: string,
+    pageInput = 1,
+    limitInput = 10,
+  ): Promise<IPaginatedResult<{ followed_at: Date; [key: string]: any }>> {
     const targetUser = await this.resolveTargetUser(targetIdentifier);
 
     const { page, limit } = calculatePagination(0, {
@@ -170,15 +174,19 @@ export class FollowService {
       });
 
     return {
-      followers,
-      pagination: calculatePagination(total, { page, limit }),
+      data: followers,
+      meta: calculatePagination(total, { page, limit }),
     };
   }
 
   /**
    * Get paginated users that this user is following
    */
-  async getFollowing(targetIdentifier: string, pageInput = 1, limitInput = 10) {
+  async getFollowing(
+    targetIdentifier: string,
+    pageInput = 1,
+    limitInput = 10,
+  ): Promise<IPaginatedResult<{ followed_at: Date; [key: string]: any }> & { user: { user_uuid: string; username: string; full_name: string } }> {
     const targetUser = await this.resolveTargetUser(targetIdentifier);
 
     const { page, limit } = calculatePagination(0, {
@@ -207,8 +215,8 @@ export class FollowService {
         username: targetUser.username,
         full_name: targetUser.full_name,
       },
-      following,
-      pagination: calculatePagination(total, { page, limit }),
+      data: following,
+      meta: calculatePagination(total, { page, limit }),
     };
   }
 

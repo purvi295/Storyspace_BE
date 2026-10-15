@@ -3,12 +3,13 @@ import { UpdateUserProfileDto } from "../dtos/user.dto";
 import { userRepository } from "../repositories/user.repository";
 import { followRepository } from "../repositories/follow.repository";
 import ApiError from "../utils/api.error";
-import { calculatePagination } from "../utils/pagination";
+import { calculatePagination, IPaginatedResult } from "../utils/pagination";
 import { AppDataSource } from "../database/data-source";
+import { User } from "../entities/user.entity";
 
 export class UserService {
   /** Return a public profile without the password hash. */
-  async getPublicProfile(userUuid: any) {
+  async getPublicProfile(userUuid: string) {
     const user = await userRepository.findByUuid(userUuid);
 
     if (!user) {
@@ -70,7 +71,11 @@ export class UserService {
   }
 
   /** Return non-admin users with safe pagination defaults and search. */
-  async getAllUsers(pageInput: number, limitInput: number, search?: string) {
+  async getAllUsers(
+    pageInput: number,
+    limitInput: number,
+    search?: string,
+  ): Promise<IPaginatedResult<Omit<User, "password">>> {
     const { page, limit } = calculatePagination(0, {
       page: pageInput,
       limit: limitInput,
@@ -84,10 +89,10 @@ export class UserService {
     });
 
     return {
-      users: users.map(
+      data: users.map(
         ({ password, ...userWithoutPassword }) => userWithoutPassword,
       ),
-      pagination: calculatePagination(total, { page, limit }),
+      meta: calculatePagination(total, { page, limit }),
     };
   }
 }

@@ -10,7 +10,7 @@ import { followRepository } from "../repositories/follow.repository";
 import { slugify, generateUniqueSlug } from "../utils/slugify";
 import ApiError from "../utils/api.error";
 import { STORY_STATUS, STORY_VISIBILITY, ROLES } from "../config/constants";
-import { calculatePagination } from "../utils/pagination";
+import { calculatePagination, IPaginatedResult } from "../utils/pagination";
 import { AppDataSource } from "../database/data-source";
 
 export class StoryService {
@@ -65,7 +65,7 @@ export class StoryService {
    * Get all public published stories (for public reading)
    * Anyone can access this - no authentication required
    */
-  static async getPublicStories(query: StoryQueryDto) {
+  static async getPublicStories(query: StoryQueryDto): Promise<IPaginatedResult<Story>> {
     const { page, limit } = calculatePagination(0, {
       page: query.page,
       limit: query.limit,
@@ -79,8 +79,8 @@ export class StoryService {
     );
 
     return {
-      stories,
-      pagination: calculatePagination(total, { page, limit }),
+      data: stories,
+      meta: calculatePagination(total, { page, limit }),
     };
   }
 
@@ -154,8 +154,8 @@ export class StoryService {
         full_name: user.full_name,
         user_uuid: user.user_uuid,
       },
-      stories,
-      pagination: calculatePagination(total, { page, limit }),
+      data: stories,
+      meta: calculatePagination(total, { page, limit }),
     };
   }
 
@@ -167,7 +167,7 @@ export class StoryService {
     query: StoryQueryDto,
     currentUserUuid?: string,
     userRole?: string,
-  ) {
+  ): Promise<IPaginatedResult<Story>> {
     const isAdmin = userRole === ROLES.ADMIN;
 
     const { page, limit } = calculatePagination(0, {
@@ -186,8 +186,8 @@ export class StoryService {
     });
 
     return {
-      stories,
-      pagination: calculatePagination(total, { page, limit }),
+      data: stories,
+      meta: calculatePagination(total, { page, limit }),
     };
   }
 
@@ -242,7 +242,10 @@ export class StoryService {
   /**
    * Get current user's stories (my stories)
    */
-  static async getMyStories(user_uuid: string, query: StoryQueryDto) {
+  static async getMyStories(
+    user_uuid: string,
+    query: StoryQueryDto,
+  ): Promise<IPaginatedResult<Story>> {
     const { page, limit } = calculatePagination(0, {
       page: query.page,
       limit: query.limit,
@@ -256,8 +259,8 @@ export class StoryService {
     });
 
     return {
-      stories,
-      pagination: calculatePagination(total, { page, limit }),
+      data: stories,
+      meta: calculatePagination(total, { page, limit }),
     };
   }
 

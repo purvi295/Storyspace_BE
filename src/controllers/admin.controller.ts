@@ -30,8 +30,7 @@ export class AdminController {
       const result = await adminService.listUsers({ page, limit, search });
       return sendPaginatedResponse(
         res,
-        result.users,
-        result.pagination,
+        result,
         "Users retrieved successfully",
       );
     } catch (error: unknown) {

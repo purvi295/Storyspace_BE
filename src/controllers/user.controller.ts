@@ -14,7 +14,13 @@ export class UserController {
   // Get public profile by username with follower/following counts
   async getPublicProfile(req: Request, res: Response) {
     try {
-      const userUuid = req.params.user_uuid;
+      const userUuid = (Array.isArray(req.params.user_uuid)
+        ? req.params.user_uuid[0]
+        : req.params.user_uuid) as string;
+
+      if (!userUuid) {
+        return sendErrorResponse(res, 400, "User UUID is required");
+      }
 
       const user = await userService.getPublicProfile(userUuid);
 
@@ -24,10 +30,13 @@ export class UserController {
         { user },
         "User profile fetched successfully",
       );
-    } catch (error: any) {
-      const status =
-        error.statusCode || (error.message === "User not found" ? 404 : 500);
-      return sendErrorResponse(res, status, error.message);
+    } catch (error: unknown) {
+      const err = error as AppError;
+      return sendErrorResponse(
+        res,
+        err.statusCode || 500,
+        (error as Error).message,
+      );
     }
   }
 
@@ -62,10 +71,13 @@ export class UserController {
         { user },
         "Profile updated successfully",
       );
-    } catch (error: any) {
-      const status =
-        error.statusCode || (error.message === "User not found" ? 404 : 500);
-      return sendErrorResponse(res, status, error.message);
+    } catch (error: unknown) {
+      const err = error as AppError;
+      return sendErrorResponse(
+        res,
+        err.statusCode || 500,
+        (error as Error).message,
+      );
     }
   }
 
@@ -75,17 +87,20 @@ export class UserController {
       const page = req.query.page ? Number(req.query.page) : 1;
       const limit = req.query.limit ? Number(req.query.limit) : 10;
       const search = req.query.search as string | undefined;
-      const { users, pagination } = await userService.getAllUsers(page, limit, search);
+      const result = await userService.getAllUsers(page, limit, search);
 
       return sendPaginatedResponse(
         res,
-        users,
-        pagination,
+        result,
         "Users list fetched successfully",
       );
-    } catch (err: any) {
-      const status = err.statusCode || 500;
-      return sendErrorResponse(res, status, err.message);
+    } catch (error: unknown) {
+      const err = error as AppError;
+      return sendErrorResponse(
+        res,
+        err.statusCode || 500,
+        (error as Error).message,
+      );
     }
   }
 
@@ -159,8 +174,7 @@ export class UserController {
 
       return sendPaginatedResponse(
         res,
-        result.followers,
-        result.pagination,
+        result,
         "Followers retrieved successfully",
       );
     } catch (error: unknown) {
@@ -188,8 +202,7 @@ export class UserController {
 
       return sendPaginatedResponse(
         res,
-        result.following,
-        result.pagination,
+        result,
         "Following list retrieved successfully",
       );
     } catch (error: unknown) {
@@ -225,9 +238,13 @@ export class UserController {
         result,
         "Follow status retrieved successfully",
       );
-    } catch (error: any) {
-      const status = error.statusCode || 400;
-      return sendErrorResponse(res, status, error.message);
+    } catch (error: unknown) {
+      const err = error as AppError;
+      return sendErrorResponse(
+        res,
+        err.statusCode || 400,
+        (error as Error).message,
+      );
     }
   }
 }

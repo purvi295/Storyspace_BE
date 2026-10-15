@@ -15,7 +15,7 @@ import {
 
 export class StoryController {
   // POST /api/stories/create - Create a new story
-  async createStory(req: Request<{}, unknown, any>, res: Response) {
+  async createStory(req: Request<{}, unknown, CreateStoryDto>, res: Response) {
     try {
       const { title, slug, content, summary, status, visibility } = req.body;
       const user_uuid = req.user?.user_uuid;
@@ -26,11 +26,11 @@ export class StoryController {
       // If a file was uploaded in multipart/form-data, upload it to storage
       let coverImageUrl =
         req.body.coverImageUrl ||
-        req.body.cover_image_url ||
-        req.body.coverImage ||
-        req.body.cover_image ||
-        req.body.image ||
-        req.body.imageUrl;
+        (req.body as any).cover_image_url ||
+        (req.body as any).coverImage ||
+        (req.body as any).cover_image ||
+        (req.body as any).image ||
+        (req.body as any).imageUrl;
 
       if (req.file) {
         const uploadResult = await storageService.uploadImage(
@@ -71,12 +71,16 @@ export class StoryController {
       const result = await StoryService.getPublicStories(query);
       return sendPaginatedResponse(
         res,
-        result.stories,
-        result.pagination,
+        result,
         "Public stories fetched successfully",
       );
-    } catch (error: any) {
-      return sendErrorResponse(res, 500, error.message);
+    } catch (error: unknown) {
+      const err = error as AppError;
+      return sendErrorResponse(
+        res,
+        err.statusCode || 500,
+        (error as Error).message,
+      );
     }
   }
 
@@ -99,14 +103,16 @@ export class StoryController {
       );
       return sendPaginatedResponse(
         res,
-        result.stories,
-        result.pagination,
+        result,
         "User stories fetched successfully",
       );
-    } catch (error: any) {
-      const status =
-        error.statusCode || (error.message === "User not found" ? 404 : 500);
-      return sendErrorResponse(res, status, error.message);
+    } catch (error: unknown) {
+      const err = error as AppError;
+      return sendErrorResponse(
+        res,
+        err.statusCode || 500,
+        (error as Error).message,
+      );
     }
   }
 
@@ -120,10 +126,13 @@ export class StoryController {
         req.user?.role,
       );
       return sendApiResponse(res, 200, { story }, "Story fetched successfully");
-    } catch (error: any) {
-      const status =
-        error.statusCode || (error.message === "Story not found" ? 404 : 500);
-      return sendErrorResponse(res, status, error.message);
+    } catch (error: unknown) {
+      const err = error as AppError;
+      return sendErrorResponse(
+        res,
+        err.statusCode || 500,
+        (error as Error).message,
+      );
     }
   }
 
@@ -144,12 +153,16 @@ export class StoryController {
       const result = await StoryService.getMyStories(user_uuid, query);
       return sendPaginatedResponse(
         res,
-        result.stories,
-        result.pagination,
+        result,
         "Your stories fetched successfully",
       );
-    } catch (error: any) {
-      return sendErrorResponse(res, error.statusCode || 500, error.message);
+    } catch (error: unknown) {
+      const err = error as AppError;
+      return sendErrorResponse(
+        res,
+        err.statusCode || 500,
+        (error as Error).message,
+      );
     }
   }
 
@@ -176,12 +189,16 @@ export class StoryController {
       );
       return sendPaginatedResponse(
         res,
-        result.stories,
-        result.pagination,
+        result,
         "All stories fetched successfully",
       );
-    } catch (error: any) {
-      return sendErrorResponse(res, error.statusCode || 500, error.message);
+    } catch (error: unknown) {
+      const err = error as AppError;
+      return sendErrorResponse(
+        res,
+        err.statusCode || 500,
+        (error as Error).message,
+      );
     }
   }
 
@@ -195,7 +212,7 @@ export class StoryController {
         return sendErrorResponse(res, 401, "User not authenticated");
       }
 
-      const updatePayload = { ...req.body };
+      const updatePayload: UpdateStoryDto = { ...req.body };
 
       let coverImageUrl =
         req.body.coverImageUrl ||
@@ -218,8 +235,6 @@ export class StoryController {
       }
 
       const story = await StoryService.getStoryBySlug(slug, user_uuid);
-      console.log(user_uuid);
-
       const updatedStory = await StoryService.updateStory(
         story,
         updatePayload,
@@ -231,15 +246,13 @@ export class StoryController {
         { story: updatedStory },
         "Story updated successfully",
       );
-    } catch (error: any) {
-      const status =
-        error.statusCode ||
-        (error.message === "Story not found"
-          ? 404
-          : error.message.includes("not authorized")
-            ? 403
-            : 400);
-      return sendErrorResponse(res, status, error.message);
+    } catch (error: unknown) {
+      const err = error as AppError;
+      return sendErrorResponse(
+        res,
+        err.statusCode || 400,
+        (error as Error).message,
+      );
     }
   }
 
@@ -256,15 +269,13 @@ export class StoryController {
       const story = await StoryService.getStoryBySlug(slug, user_uuid);
       const result = await StoryService.deleteStory(story, user_uuid);
       return sendApiResponse(res, 200, result, "Story deleted successfully");
-    } catch (error: any) {
-      const status =
-        error.statusCode ||
-        (error.message === "Story not found"
-          ? 404
-          : error.message.includes("not authorized")
-            ? 403
-            : 400);
-      return sendErrorResponse(res, status, error.message);
+    } catch (error: unknown) {
+      const err = error as AppError;
+      return sendErrorResponse(
+        res,
+        err.statusCode || 400,
+        (error as Error).message,
+      );
     }
   }
 
@@ -283,8 +294,13 @@ export class StoryController {
         { stats },
         "Story statistics fetched successfully",
       );
-    } catch (error: any) {
-      return sendErrorResponse(res, 500, error.message);
+    } catch (error: unknown) {
+      const err = error as AppError;
+      return sendErrorResponse(
+        res,
+        err.statusCode || 500,
+        (error as Error).message,
+      );
     }
   }
 }

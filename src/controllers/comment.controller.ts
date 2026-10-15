@@ -52,8 +52,7 @@ export class CommentController {
 
       return sendPaginatedResponse(
         res,
-        result.comments,
-        result.pagination,
+        result,
         "Story comments retrieved successfully"
       );
     } catch (error: unknown) {
@@ -72,9 +71,13 @@ export class CommentController {
 
       const comment = await commentService.getCommentById(comment_uuid);
       return sendApiResponse(res, 200, comment, "Comment retrieved successfully");
-    } catch (error: any) {
-      const status = error.statusCode || 404;
-      return sendErrorResponse(res, status, error.message);
+    } catch (error: unknown) {
+      const err = error as AppError;
+      return sendErrorResponse(
+        res,
+        err.statusCode || 404,
+        (error as Error).message,
+      );
     }
   }
 
@@ -98,9 +101,13 @@ export class CommentController {
       );
 
       return sendApiResponse(res, 200, comment, "Comment updated successfully");
-    } catch (error: any) {
-      const status = error.statusCode || 400;
-      return sendErrorResponse(res, status, error.message);
+    } catch (error: unknown) {
+      const err = error as AppError;
+      return sendErrorResponse(
+        res,
+        err.statusCode || 400,
+        (error as Error).message,
+      );
     }
   }
 
@@ -120,9 +127,13 @@ export class CommentController {
 
       const result = await commentService.deleteComment(comment_uuid, user_uuid, userRole);
       return sendApiResponse(res, 200, result, result.message);
-    } catch (error: any) {
-      const status = error.statusCode || 400;
-      return sendErrorResponse(res, status, error.message);
+    } catch (error: unknown) {
+      const err = error as AppError;
+      return sendErrorResponse(
+        res,
+        err.statusCode || 400,
+        (error as Error).message,
+      );
     }
   }
 }

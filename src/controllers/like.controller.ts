@@ -90,8 +90,7 @@ export class LikeController {
       const result = await likeService.getStoryLikes(story_uuid, page, limit, req.user?.user_uuid, req.user?.role);
       return sendPaginatedResponse(
         res,
-        result.likes,
-        result.pagination,
+        result,
         "Story likes retrieved successfully"
       );
     } catch (error: unknown) {

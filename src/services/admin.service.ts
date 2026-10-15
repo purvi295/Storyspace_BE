@@ -8,7 +8,7 @@ import { commentRepository } from "../repositories/comment.repository";
 import { userRepository } from "../repositories/user.repository";
 import ApiError from "../utils/api.error";
 import { STORY_STATUS } from "../config/constants";
-import { calculatePagination } from "../utils/pagination";
+import { calculatePagination, IPaginatedResult } from "../utils/pagination";
 
 export class AdminService {
   private userRepository = AppDataSource.getRepository(User);
@@ -53,7 +53,7 @@ export class AdminService {
   /**
    * List all users with pagination and optional search (for admin panel)
    */
-  async listUsers(options: { page: number; limit: number; search?: string }) {
+  async listUsers(options: { page: number; limit: number; search?: string }): Promise<IPaginatedResult<Partial<User>>> {
     const { page, limit } = calculatePagination(0, {
       page: options.page,
       limit: options.limit,
@@ -65,7 +65,10 @@ export class AdminService {
       search: options.search,
     });
 
-    return { users, pagination: calculatePagination(total, { page, limit }) };
+    return {
+      data: users,
+      meta: calculatePagination(total, { page, limit }),
+    };
   }
 
   /**

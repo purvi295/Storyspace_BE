@@ -10,6 +10,15 @@ const JWT_SECRET =
   process.env.JWT_SECRET || "your-secret-key-change-in-production";
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1d";
 
+export interface JwtUserPayload {
+  user_uuid: string;
+  email: string;
+  username: string;
+  role: string;
+  iat?: number;
+  exp?: number;
+}
+
 export class AuthService {
   // Hash password
   async hashPassword(password: string): Promise<string> {
@@ -27,7 +36,7 @@ export class AuthService {
 
   // Generate JWT token
   generateToken(user: User): string {
-    const payload = {
+    const payload: JwtUserPayload = {
       user_uuid: user.user_uuid,
       email: user.email,
       username: user.username,
@@ -39,9 +48,9 @@ export class AuthService {
   }
 
   // Verify JWT token
-  verifyToken(token: string): any {
+  verifyToken(token: string): JwtUserPayload | null {
     try {
-      return jwt.verify(token, JWT_SECRET);
+      return jwt.verify(token, JWT_SECRET) as JwtUserPayload;
     } catch (error) {
       return null;
     }

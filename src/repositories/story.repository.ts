@@ -1,4 +1,9 @@
-import { Brackets, EntityManager, Repository, SelectQueryBuilder } from "typeorm";
+import {
+  Brackets,
+  EntityManager,
+  Repository,
+  SelectQueryBuilder,
+} from "typeorm";
 import { AppDataSource } from "../database/data-source";
 import {
   CreateStoryDto,
@@ -93,10 +98,7 @@ export class StoryRepository {
       .addOrderBy("story.created_at", "DESC");
 
     if (options.searchQuery) {
-      const words = options.searchQuery
-        .toLowerCase()
-        .split(/\s+/)
-        .filter((w) => w.length > 2);
+      const words = options.searchQuery.toLowerCase().split(/\s+/);
       if (words.length > 0) {
         queryBuilder.andWhere(
           new Brackets((qb) => {
@@ -120,7 +122,10 @@ export class StoryRepository {
       }
     }
 
-    const [stories, total] = await queryBuilder.skip(calculateSkip(page, limit)).take(limit).getManyAndCount();
+    const [stories, total] = await queryBuilder
+      .skip(calculateSkip(page, limit))
+      .take(limit)
+      .getManyAndCount();
 
     return { stories, total };
   }
@@ -163,7 +168,10 @@ export class StoryRepository {
       });
     }
 
-    const [stories, total] = await queryBuilder.skip(calculateSkip(page, limit)).take(limit).getManyAndCount();
+    const [stories, total] = await queryBuilder
+      .skip(calculateSkip(page, limit))
+      .take(limit)
+      .getManyAndCount();
 
     return { stories, total };
   }
@@ -261,10 +269,7 @@ export class StoryRepository {
     }
 
     if (options.searchQuery) {
-      const words = options.searchQuery
-        .toLowerCase()
-        .split(/\s+/)
-        .filter((w) => w.length > 2);
+      const words = options.searchQuery.toLowerCase().split(/\s+/);
       if (words.length > 0) {
         queryBuilder.andWhere(
           new Brackets((qb) => {
@@ -288,7 +293,10 @@ export class StoryRepository {
       }
     }
 
-    const [stories, total] = await queryBuilder.skip(calculateSkip(page, limit)).take(limit).getManyAndCount();
+    const [stories, total] = await queryBuilder
+      .skip(calculateSkip(page, limit))
+      .take(limit)
+      .getManyAndCount();
 
     return { stories, total };
   }

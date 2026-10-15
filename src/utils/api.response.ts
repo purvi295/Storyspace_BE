@@ -3,6 +3,8 @@
 
 import { Response } from 'express';
 
+import { IPaginatedResult } from './pagination';
+
 export interface ResponseMeta {
   [key: string]: unknown;
 }
@@ -55,13 +57,42 @@ export const sendErrorResponse = (
 ): Response =>
   new ApiResponse<null>(statusCode, null, message, meta).send(res);
 
-/** Send a standard response with pagination information in `meta`. */
-export const sendPaginatedResponse = <T>(
+/**
+ * Send a standard response with pagination information in `meta`.
+ * Supports both:
+ * 1. sendPaginatedResponse(res, paginatedResult, message, statusCode)
+ * 2. sendPaginatedResponse(res, data, paginationMeta, message, statusCode)
+ */
+export function sendPaginatedResponse<T>(
   res: Response,
-  data: T,
-  pagination: PaginationMeta,
+  dataOrResult: T[] | IPaginatedResult<T>,
+  paginationOrMessage?: PaginationMeta | string,
   message = 'Success',
   statusCode = 200,
-): Response => new ApiResponse(statusCode, data, message, pagination).send(res);
+): Response {
+  if (
+    dataOrResult &&
+    typeof dataOrResult === 'object' &&
+    'data' in dataOrResult &&
+    'meta' in dataOrResult
+  ) {
+    const customMessage =
+      typeof paginationOrMessage === 'string' ? paginationOrMessage : message;
+    return new ApiResponse(
+      statusCode,
+      dataOrResult.data,
+      customMessage,
+      dataOrResult.meta,
+    ).send(res);
+  }
+
+  return new ApiResponse(
+    statusCode,
+    dataOrResult as T[],
+    (typeof paginationOrMessage === 'string' ? paginationOrMessage : message),
+    (typeof paginationOrMessage === 'object' ? paginationOrMessage : undefined) as PaginationMeta,
+  ).send(res);
+}
 
 export default ApiResponse;
+

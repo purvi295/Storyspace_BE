@@ -4,14 +4,15 @@ import { followRepository } from "../repositories/follow.repository";
 import { CreateCommentDto, UpdateCommentDto } from "../dtos/comment.dto";
 import ApiError from "../utils/api.error";
 import { STORY_STATUS, STORY_VISIBILITY, ROLES, PAGINATION } from "../config/constants";
-import { calculatePagination } from "../utils/pagination";
+import { calculatePagination, IPaginatedResult } from "../utils/pagination";
 import { User } from "../entities/user.entity";
+import { Story } from "../entities/story.entity";
 import { AppDataSource } from "../database/data-source";
 
 type UserWithoutPassword = Omit<User, 'password'>;
 
 export class CommentService {
-  private async checkStoryAccess(story: any, user_uuid?: string, userRole?: string) {
+  private async checkStoryAccess(story: Story, user_uuid?: string, userRole?: string) {
     const isAuthor = Boolean(user_uuid && user_uuid === story.user_uuid);
     const isAdmin = userRole === ROLES.ADMIN;
 
@@ -89,8 +90,8 @@ export class CommentService {
     pageInput = 1,
     limitInput = 10,
     viewerUuid?: string,
-    userRole?: string
-  ) {
+    userRole?: string,
+  ): Promise<IPaginatedResult<any> & { story: { story_uuid: string; title: string; slug: string } }> {
     const story = await this.resolveStory(storyIdentifier);
     await this.checkStoryAccess(story, viewerUuid, userRole);
 
@@ -121,8 +122,8 @@ export class CommentService {
         title: story.title,
         slug: story.slug,
       },
-      comments: safeComments,
-      pagination: calculatePagination(total, { page, limit }),
+      data: safeComments,
+      meta: calculatePagination(total, { page, limit }),
     };
   }
 

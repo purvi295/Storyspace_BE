@@ -32,8 +32,9 @@ export class AuthController {
       const result = await authService.login({ email, password });
 
       return sendApiResponse(res, 200, result, "Login successful");
-    } catch (error: any) {
-      return sendErrorResponse(res, 401, error.message);
+    } catch (error: unknown) {
+      const err = error as AppError;
+      return sendErrorResponse(res, err.statusCode || 401, (error as Error).message);
     }
   }
 
@@ -54,8 +55,9 @@ export class AuthController {
       const { password, ...userWithoutPassword } = user;
 
       return sendApiResponse(res, 200, { user: userWithoutPassword }, "Current user fetched successfully");
-    } catch (error: any) {
-      return sendErrorResponse(res, 500, error.message);
+    } catch (error: unknown) {
+      const err = error as AppError;
+      return sendErrorResponse(res, err.statusCode || 500, (error as Error).message);
     }
   }
 
@@ -67,8 +69,9 @@ export class AuthController {
       }
 
       return sendApiResponse(res, 200, null, "User logged out successfully");
-    } catch (error: any) {
-      return sendErrorResponse(res, 500, error.message);
+    } catch (error: unknown) {
+      const err = error as AppError;
+      return sendErrorResponse(res, err.statusCode || 500, (error as Error).message);
     }
   }
 }
