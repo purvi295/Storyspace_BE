@@ -16,11 +16,6 @@ export class UserRepository {
     return this.getRepo(manager).findOne({ where: { user_uuid, is_delete: 0 } });
   }
 
-  // Find any user by UUID regardless of is_delete (used for reactivation)
-  async findByUuidAny(user_uuid: string, manager?: EntityManager): Promise<User | null> {
-    return this.getRepo(manager).findOne({ where: { user_uuid } });
-  }
-
   // Find user by email (excluding soft-deleted)
   async findByEmail(email: string, manager?: EntityManager): Promise<User | null> {
     return this.getRepo(manager).findOne({ where: { email, is_delete: 0 } });
@@ -165,14 +160,6 @@ export class UserRepository {
       { is_delete: 1, deleted_at: new Date() },
     );
     return (result.affected ?? 0) > 0;
-  }
-
-  // Reactivate a soft-deleted user
-  async reactivate(userUuid: string, manager?: EntityManager): Promise<void> {
-    await this.getRepo(manager).update(
-      { user_uuid: userUuid },
-      { is_delete: 0, deleted_at: null },
-    );
   }
 }
 

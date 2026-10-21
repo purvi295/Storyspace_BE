@@ -56,6 +56,14 @@ export class LikeRepository {
     return (result.affected ?? 0) > 0;
   }
 
+  // Soft delete all likes for a story (cascade soft delete)
+  async deleteByStoryUuid(story_uuid: string, manager?: EntityManager): Promise<void> {
+    await this.getRepo(manager).update(
+      { story_uuid, is_delete: 0 },
+      { is_delete: 1, deleted_at: new Date() },
+    );
+  }
+
   // Re-like: reactivate a previously unliked like (no duplicate insert)
   async reactivateLike(id: number, manager?: EntityManager): Promise<void> {
     await this.getRepo(manager).update(

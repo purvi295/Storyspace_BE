@@ -43,10 +43,6 @@ export class StoryRepository {
     return this.getRepo(manager).findOneBy({ slug, is_delete: 0 });
   }
 
-  async findByUuidAny(uuid: string, manager?: EntityManager) {
-    return this.getRepo(manager).findOneBy({ story_uuid: uuid });
-  }
-
   async update(
     story: Story,
     storyData: UpdateStoryDto,
@@ -62,13 +58,6 @@ export class StoryRepository {
     return this.getRepo(manager).update(
       { story_uuid: story.story_uuid, is_delete: 0 },
       { is_delete: 1, deleted_at: new Date() },
-    );
-  }
-
-  async reactivate(story_uuid: string, manager?: EntityManager) {
-    return this.getRepo(manager).update(
-      { story_uuid },
-      { is_delete: 0, deleted_at: null },
     );
   }
 
@@ -138,7 +127,6 @@ export class StoryRepository {
     page: number;
     limit: number;
     status?: string;
-    visibility?: string;
     allowedVisibilities?: string[];
   }): Promise<{ stories: Story[]; total: number }> {
     const { page, limit } = options;
@@ -155,14 +143,7 @@ export class StoryRepository {
       });
     }
 
-    if (options.visibility) {
-      queryBuilder.andWhere("story.visibility = :visibility", {
-        visibility: options.visibility,
-      });
-    } else if (
-      options.allowedVisibilities &&
-      options.allowedVisibilities.length > 0
-    ) {
+    if (options.allowedVisibilities?.length) {
       queryBuilder.andWhere("story.visibility IN (:...allowedVisibilities)", {
         allowedVisibilities: options.allowedVisibilities,
       });
@@ -197,57 +178,57 @@ export class StoryRepository {
       .where("story.is_delete = :is_delete", { is_delete: 0 })
       .orderBy("story.created_at", "DESC");
 
-    if (options.isAdmin) {
-      // Admins have full access, only explicit filters will be applied below
-    } else if (options.currentUserUuid) {
-      queryBuilder.andWhere(
-        new Brackets((qb) => {
-          qb.where("story.user_uuid = :currentUserUuid", {
-            currentUserUuid: options.currentUserUuid,
-          }).orWhere(
-            new Brackets((qbPublished) => {
-              qbPublished
-                .where("story.status = :publishedStatus", {
-                  publishedStatus: STORY_STATUS.PUBLISHED,
-                })
-                .andWhere(
-                  new Brackets((qbVis) => {
-                    qbVis
-                      .where("story.visibility = :publicVisibility", {
-                        publicVisibility: STORY_VISIBILITY.PUBLIC,
-                      })
-                      .orWhere(
-                        (subQb: SelectQueryBuilder<any>) => {
-                          const subQuery = subQb
-                            .subQuery()
-                            .select("1")
-                            .from(Follow, "f")
-                            .where("f.follower_id = :currentUserUuid")
-                            .andWhere("f.following_id = story.user_uuid")
-                            .andWhere("f.is_delete = 0")
-                            .getQuery();
-                          return `story.visibility = :followersOnlyVisibility AND EXISTS (${subQuery})`;
-                        },
-                        {
-                          followersOnlyVisibility:
-                            STORY_VISIBILITY.FOLLOWERS_ONLY,
-                          currentUserUuid: options.currentUserUuid,
-                        },
-                      );
-                  }),
-                );
-            }),
-          );
-        }),
-      );
-    } else {
-      queryBuilder
-        .andWhere("story.status = :publishedStatus", {
-          publishedStatus: STORY_STATUS.PUBLISHED,
-        })
-        .andWhere("story.visibility = :publicVisibility", {
-          publicVisibility: STORY_VISIBILITY.PUBLIC,
-        });
+    if (!options.isAdmin) {
+      if (options.currentUserUuid) {
+        queryBuilder.andWhere(
+          new Brackets((qb) => {
+            qb.where("story.user_uuid = :currentUserUuid", {
+              currentUserUuid: options.currentUserUuid,
+            }).orWhere(
+              new Brackets((qbPublished) => {
+                qbPublished
+                  .where("story.status = :publishedStatus", {
+                    publishedStatus: STORY_STATUS.PUBLISHED,
+                  })
+                  .andWhere(
+                    new Brackets((qbVis) => {
+                      qbVis
+                        .where("story.visibility = :publicVisibility", {
+                          publicVisibility: STORY_VISIBILITY.PUBLIC,
+                        })
+                        .orWhere(
+                          (subQb: SelectQueryBuilder<any>) => {
+                            const subQuery = subQb
+                              .subQuery()
+                              .select("1")
+                              .from(Follow, "f")
+                              .where("f.follower_id = :currentUserUuid")
+                              .andWhere("f.following_id = story.user_uuid")
+                              .andWhere("f.is_delete = 0")
+                              .getQuery();
+                            return `story.visibility = :followersOnlyVisibility AND EXISTS (${subQuery})`;
+                          },
+                          {
+                            followersOnlyVisibility:
+                              STORY_VISIBILITY.FOLLOWERS_ONLY,
+                            currentUserUuid: options.currentUserUuid,
+                          },
+                        );
+                    }),
+                  );
+              }),
+            );
+          }),
+        );
+      } else {
+        queryBuilder
+          .andWhere("story.status = :publishedStatus", {
+            publishedStatus: STORY_STATUS.PUBLISHED,
+          })
+          .andWhere("story.visibility = :publicVisibility", {
+            publicVisibility: STORY_VISIBILITY.PUBLIC,
+          });
+      }
     }
 
     if (options.status) {
@@ -304,8 +285,31 @@ export class StoryRepository {
   /**
    * Get story count by user (excluding soft-deleted)
    */
-  async getStoryCountByUser(user_uuid: string): Promise<number> {
-    return await this.repository.count({ where: { user_uuid, is_delete: 0 } });
+  async getStoryCountByUser(
+    user_uuid: string,
+    manager?: EntityManager,
+  ): Promise<number> {
+    return await this.getRepo(manager).count({
+      where: { user_uuid, is_delete: 0 },
+    });
+  }
+
+  /**
+   * Get story count by user and optional status (excluding soft-deleted)
+   */
+  async getStoryCountByUserAndStatus(
+    user_uuid: string,
+    status?: string,
+    manager?: EntityManager,
+  ): Promise<number> {
+    const where: { user_uuid: string; is_delete: number; status?: string } = {
+      user_uuid,
+      is_delete: 0,
+    };
+    if (status) {
+      where.status = status;
+    }
+    return await this.getRepo(manager).count({ where });
   }
 }
 

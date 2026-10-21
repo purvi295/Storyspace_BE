@@ -65,7 +65,9 @@ export class StoryService {
    * Get all public published stories (for public reading)
    * Anyone can access this - no authentication required
    */
-  static async getPublicStories(query: StoryQueryDto): Promise<IPaginatedResult<Story>> {
+  static async getPublicStories(
+    query: StoryQueryDto,
+  ): Promise<IPaginatedResult<Story>> {
     const { page, limit } = calculatePagination(0, {
       page: query.page,
       limit: query.limit,
@@ -277,8 +279,6 @@ export class StoryService {
     await queryRunner.startTransaction();
 
     try {
-      console.log("story", story.user_uuid);
-      console.log("user_uuid", user_uuid);
       // Check if the user is the author of the story
       if (story.user_uuid !== user_uuid) {
         throw ApiError.forbidden("You are not authorized to update this story");
@@ -353,26 +353,17 @@ export class StoryService {
    * Get story statistics for a user
    */
   static async getUserStoryStats(user_uuid: string) {
-    const totalStories = await storyRepository.getStoryCountByUser(user_uuid);
-
-    // Get counts by status
-    const draftCount = await storyRepository
-      .findStoriesByUser({
+    const [totalStories, draftCount, publishedCount] = await Promise.all([
+      storyRepository.getStoryCountByUser(user_uuid),
+      storyRepository.getStoryCountByUserAndStatus(
         user_uuid,
-        page: 1,
-        limit: 0,
-        status: STORY_STATUS.DRAFT,
-      })
-      .then((result) => result.total);
-
-    const publishedCount = await storyRepository
-      .findStoriesByUser({
+        STORY_STATUS.DRAFT,
+      ),
+      storyRepository.getStoryCountByUserAndStatus(
         user_uuid,
-        page: 1,
-        limit: 0,
-        status: STORY_STATUS.PUBLISHED,
-      })
-      .then((result) => result.total);
+        STORY_STATUS.PUBLISHED,
+      ),
+    ]);
 
     return {
       totalStories,
