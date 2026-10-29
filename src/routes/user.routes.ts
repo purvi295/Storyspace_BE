@@ -9,6 +9,7 @@ import {
   usernameParamSchema,
   followPaginationQuerySchema,
   userUuidBodySchema,
+  isFollowingQuerySchema,
 } from "../middlewares/user.validation";
 import { userUuidParamSchema } from "../middlewares/common.validation";
 
@@ -54,7 +55,6 @@ router.delete(
 router.get(
   "/followers",
   validate({
-    body: userUuidBodySchema,
     query: followPaginationQuerySchema,
   }),
   userController.getFollowers.bind(userController),
@@ -64,7 +64,6 @@ router.get(
 router.get(
   "/following",
   validate({
-    body: userUuidBodySchema,
     query: followPaginationQuerySchema,
   }),
   userController.getFollowing.bind(userController),
@@ -74,7 +73,7 @@ router.get(
 router.get(
   "/is-following",
   authenticateToken,
-  validate({ body: userUuidBodySchema }),
+  validate({ query: isFollowingQuerySchema }),
   userController.isFollowing.bind(userController),
 );
 

@@ -84,10 +84,12 @@ export class StoryController {
     }
   }
 
-  // GET /api/stories/user/:username - Get stories by a specific user (optional auth)
+  // GET /api/stories/user/:user_uuid - Get stories by user_uuid (optional auth)
   async getStoriesByUser(req: Request, res: Response) {
     try {
-      const username = req.params.username as string;
+      const user_uuid = (req.params.user_uuid ||
+        req.params.username ||
+        req.params.target) as string;
       const query: StoryQueryDto = {
         page: req.query.page ? Number(req.query.page) : undefined,
         limit: req.query.limit ? Number(req.query.limit) : undefined,
@@ -96,7 +98,7 @@ export class StoryController {
       };
 
       const result = await StoryService.getStoriesByUser(
-        username,
+        user_uuid,
         query,
         req.user?.user_uuid,
         req.user?.role,

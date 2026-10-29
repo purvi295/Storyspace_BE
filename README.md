@@ -43,16 +43,16 @@ A production-ready, scalable RESTful API for **Storyspace** — a modern storyte
 
 ## 🛠️ Technology Stack
 
-| Component | Technology |
-| :--- | :--- |
-| **Language & Runtime** | TypeScript, Node.js |
-| **Web Framework** | Express.js |
-| **Database** | PostgreSQL (Neon Cloud Database) |
-| **ORM** | TypeORM |
-| **Object Storage** | Neon Object Storage (AWS S3-compatible SDK) |
-| **Authentication** | JSON Web Tokens (JWT) & Bcrypt |
-| **Validation** | Joi |
-| **File Handling** | Multer (Memory Storage) |
+| Component              | Technology                                  |
+| :--------------------- | :------------------------------------------ |
+| **Language & Runtime** | TypeScript, Node.js                         |
+| **Web Framework**      | Express.js                                  |
+| **Database**           | PostgreSQL (Neon Cloud Database)            |
+| **ORM**                | TypeORM                                     |
+| **Object Storage**     | Neon Object Storage (AWS S3-compatible SDK) |
+| **Authentication**     | JSON Web Tokens (JWT) & Bcrypt              |
+| **Validation**         | Joi                                         |
+| **File Handling**      | Multer (Memory Storage)                     |
 
 ---
 
@@ -102,11 +102,13 @@ Storyspace-BE/
 ## ⚙️ Getting Started
 
 ### 1. Prerequisites
+
 - Node.js (v18+ recommended)
 - PostgreSQL database (or [Neon Postgres](https://neon.tech))
 - Neon Object Storage / S3-compatible credentials
 
 ### 2. Installation
+
 Clone the repository and install dependencies:
 
 ```bash
@@ -116,6 +118,7 @@ npm install
 ```
 
 ### 3. Environment Configuration
+
 Create a `.env` file in the project root:
 
 ```env
@@ -129,6 +132,15 @@ DATABASE_URL="postgresql://<user>:<password>@<host>/<dbname>?sslmode=require"
 # JWT Configuration
 JWT_SECRET=your-256-bit-secret-key-here
 JWT_EXPIRES_IN=1d
+
+# PostgreSQL pool (use a Neon -pooler URL for the running web API)
+DB_POOL_MAX=10
+DB_POOL_MIN=1
+DB_POOL_IDLE_TIMEOUT_MS=30000
+DB_POOL_CONNECTION_TIMEOUT_MS=5000
+
+# Logging
+LOG_LEVEL=info
 
 # Admin Default Credentials
 ADMIN_NAME="System Admin"
@@ -145,11 +157,15 @@ NEON_STORAGE_BUCKET=story
 ```
 
 > **Tip**: Generate a secure 256-bit `JWT_SECRET` using:
+>
 > ```bash
 > node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 > ```
 
+> In production, startup fails unless `JWT_SECRET` is present and at least 32 characters long.
+
 ### 4. Database Migrations
+
 Run TypeORM migrations to set up the database schema:
 
 ```bash
@@ -173,65 +189,72 @@ npm run migration:run
 ## 📡 API Reference
 
 ### 🔐 Authentication (`/api/auth`)
-| Method | Endpoint | Auth | Description |
-| :--- | :--- | :---: | :--- |
-| `POST` | `/api/auth/register` | None | Register a new user account |
-| `POST` | `/api/auth/login` | None | Login user & retrieve JWT token |
-| `POST` | `/api/auth/logout` | Bearer | Logout user |
-| `GET` | `/api/auth/me` | Bearer | Get current authenticated user profile |
+
+| Method | Endpoint             |  Auth  | Description                            |
+| :----- | :------------------- | :----: | :------------------------------------- |
+| `POST` | `/api/auth/register` |  None  | Register a new user account            |
+| `POST` | `/api/auth/login`    |  None  | Login user & retrieve JWT token        |
+| `POST` | `/api/auth/logout`   | Bearer | Logout user                            |
+| `GET`  | `/api/auth/me`       | Bearer | Get current authenticated user profile |
 
 ### 👤 Users & Social Graph (`/api/users`)
-| Method | Endpoint | Auth | Description |
-| :--- | :--- | :---: | :--- |
-| `GET` | `/api/users/list` | None | Paginated directory of users (`?page=1&limit=10&search=...`) |
-| `GET` | `/api/users/:username` | None | Public profile with follower and following counts |
-| `PUT` | `/api/users/profile` | Bearer | Update profile info & upload avatar to S3 (`multipart/form-data`) |
-| `POST` | `/api/users/:target/follow` | Bearer | Follow user by username or UUID |
-| `DELETE` | `/api/users/:target/follow` | Bearer | Unfollow user |
-| `GET` | `/api/users/:target/followers` | None | Get paginated list of followers |
-| `GET` | `/api/users/:target/following` | None | Get paginated list of followed users |
-| `GET` | `/api/users/:target/is-following`| Bearer | Check if authenticated user follows target |
+
+| Method   | Endpoint                          |  Auth  | Description                                                       |
+| :------- | :-------------------------------- | :----: | :---------------------------------------------------------------- |
+| `GET`    | `/api/users/list`                 |  None  | Paginated directory of users (`?page=1&limit=10&search=...`)      |
+| `GET`    | `/api/users/:username`            |  None  | Public profile with follower and following counts                 |
+| `PUT`    | `/api/users/profile`              | Bearer | Update profile info & upload avatar to S3 (`multipart/form-data`) |
+| `POST`   | `/api/users/:target/follow`       | Bearer | Follow user by username or UUID                                   |
+| `DELETE` | `/api/users/:target/follow`       | Bearer | Unfollow user                                                     |
+| `GET`    | `/api/users/:target/followers`    |  None  | Get paginated list of followers                                   |
+| `GET`    | `/api/users/:target/following`    |  None  | Get paginated list of followed users                              |
+| `GET`    | `/api/users/:target/is-following` | Bearer | Check if authenticated user follows target                        |
 
 ### 📚 Stories (`/api/stories`)
-| Method | Endpoint | Auth | Description |
-| :--- | :--- | :---: | :--- |
-| `POST` | `/api/stories/create` | Bearer | Create story with optional S3 cover image upload |
-| `GET` | `/api/stories/public` | None | Get public published stories feed |
-| `GET` | `/api/stories/user/:username`| Optional | Get stories by author (followers-only filtered for non-followers) |
-| `GET` | `/api/stories/slug/:slug` | Optional | Get single story by slug (enforces draft/follower privacy) |
-| `GET` | `/api/stories/my` | Bearer | Get current authenticated author's stories (drafts & published) |
-| `GET` | `/api/stories/stats/my` | Bearer | Get author story metrics (drafts, published, likes count) |
-| `GET` | `/api/stories` | Bearer | Explore all stories with filters (`?status=&visibility=&author=`) |
-| `PUT` | `/api/stories/:slug` | Bearer | Update story content, status (`draft`/`published`), or cover image |
-| `DELETE` | `/api/stories/:slug` | Bearer | Delete own story |
+
+| Method   | Endpoint                      |   Auth   | Description                                                        |
+| :------- | :---------------------------- | :------: | :----------------------------------------------------------------- |
+| `POST`   | `/api/stories/create`         |  Bearer  | Create story with optional S3 cover image upload                   |
+| `GET`    | `/api/stories/public`         |   None   | Get public published stories feed                                  |
+| `GET`    | `/api/stories/user/:username` | Optional | Get stories by author (followers-only filtered for non-followers)  |
+| `GET`    | `/api/stories/slug/:slug`     | Optional | Get single story by slug (enforces draft/follower privacy)         |
+| `GET`    | `/api/stories/my`             |  Bearer  | Get current authenticated author's stories (drafts & published)    |
+| `GET`    | `/api/stories/stats/my`       |  Bearer  | Get author story metrics (drafts, published, likes count)          |
+| `GET`    | `/api/stories`                |  Bearer  | Explore all stories with filters (`?status=&visibility=&author=`)  |
+| `PUT`    | `/api/stories/:slug`          |  Bearer  | Update story content, status (`draft`/`published`), or cover image |
+| `DELETE` | `/api/stories/:slug`          |  Bearer  | Delete own story                                                   |
 
 ### 👏 Likes & Claps (`/api/stories` & `/api/likes`)
-| Method | Endpoint | Auth | Description |
-| :--- | :--- | :---: | :--- |
-| `POST` | `/api/stories/:identifier/like` | Bearer | Toggle like / clap on a story |
-| `GET` | `/api/stories/:identifier/like/status` | Bearer | Check if authenticated user liked story |
-| `GET` | `/api/likes/user/:username` | None | Get paginated list of stories liked by user |
+
+| Method | Endpoint                               |  Auth  | Description                                 |
+| :----- | :------------------------------------- | :----: | :------------------------------------------ |
+| `POST` | `/api/stories/:identifier/like`        | Bearer | Toggle like / clap on a story               |
+| `GET`  | `/api/stories/:identifier/like/status` | Bearer | Check if authenticated user liked story     |
+| `GET`  | `/api/likes/user/:username`            |  None  | Get paginated list of stories liked by user |
 
 ### 💬 Comments (`/api/stories` & `/api/comments`)
-| Method | Endpoint | Auth | Description |
-| :--- | :--- | :---: | :--- |
-| `POST` | `/api/stories/:identifier/comments` | Bearer | Add a comment to a story |
-| `GET` | `/api/stories/:identifier/comments` | Optional | Get paginated comments for a story |
-| `GET` | `/api/comments/:id` | None | Get a single comment by ID |
-| `PUT` | `/api/comments/:id` | Bearer | Update own comment |
-| `DELETE` | `/api/comments/:id` | Bearer | Delete comment (Comment author, Story author, or Admin) |
+
+| Method   | Endpoint                            |   Auth   | Description                                             |
+| :------- | :---------------------------------- | :------: | :------------------------------------------------------ |
+| `POST`   | `/api/stories/:identifier/comments` |  Bearer  | Add a comment to a story                                |
+| `GET`    | `/api/stories/:identifier/comments` | Optional | Get paginated comments for a story                      |
+| `GET`    | `/api/comments/:id`                 |   None   | Get a single comment by ID                              |
+| `PUT`    | `/api/comments/:id`                 |  Bearer  | Update own comment                                      |
+| `DELETE` | `/api/comments/:id`                 |  Bearer  | Delete comment (Comment author, Story author, or Admin) |
 
 ### 🛡️ Admin Moderation (`/api/admin`)
-| Method | Endpoint | Auth | Description |
-| :--- | :--- | :---: | :--- |
-| `GET` | `/api/admin/stats` | Admin | Platform metrics (total users, published/draft stories, likes, comments) |
-| `GET` | `/api/admin/users` | Admin | Paginated user management directory |
-| `DELETE` | `/api/admin/stories/:identifier` | Admin | Delete any violating story across the platform |
-| `DELETE` | `/api/admin/comments/:id` | Admin | Delete any violating comment across the platform |
+
+| Method   | Endpoint                         | Auth  | Description                                                              |
+| :------- | :------------------------------- | :---: | :----------------------------------------------------------------------- |
+| `GET`    | `/api/admin/stats`               | Admin | Platform metrics (total users, published/draft stories, likes, comments) |
+| `GET`    | `/api/admin/users`               | Admin | Paginated user management directory                                      |
+| `DELETE` | `/api/admin/stories/:identifier` | Admin | Delete any violating story across the platform                           |
+| `DELETE` | `/api/admin/comments/:id`        | Admin | Delete any violating comment across the platform                         |
 
 ### 🖼️ Direct Media Upload (`/api/upload`)
-| Method | Endpoint | Auth | Description |
-| :--- | :--- | :---: | :--- |
+
+| Method | Endpoint            |  Auth  | Description                                                       |
+| :----- | :------------------ | :----: | :---------------------------------------------------------------- |
 | `POST` | `/api/upload/image` | Bearer | Direct upload to Neon S3 (`?folder=stories` or `?folder=avatars`) |
 
 ---
@@ -248,4 +271,5 @@ A complete, pre-configured Postman collection is included in:
 ---
 
 ## 📄 License
+
 This project is private and licensed for development and learning purposes.

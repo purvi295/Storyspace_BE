@@ -61,7 +61,16 @@ export const loginSchema = Joi.object({
   }),
 });
 
+export const refreshSchema = Joi.object({
+  refreshToken: Joi.string().required().messages({
+    "string.empty": "Refresh token cannot be empty",
+    "any.required": "Refresh token is required",
+  }),
+});
+
 export default {
   registerSchema,
   loginSchema,
+  refreshSchema,
 };
+

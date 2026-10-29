@@ -58,6 +58,14 @@ export class AuthRepository {
   async save(user: User, manager?: EntityManager): Promise<User> {
     return this.getRepo(manager).save(user);
   }
+
+  async updateLastLogoutAt(
+    user_uuid: string,
+    logoutTime: Date = new Date(),
+    manager?: EntityManager,
+  ): Promise<void> {
+    await this.getRepo(manager).update({ user_uuid }, { last_logout_at: logoutTime });
+  }
 }
 
 export const authRepository = new AuthRepository();

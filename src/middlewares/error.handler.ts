@@ -3,6 +3,7 @@
 
 import { Request, Response, NextFunction } from "express";
 import ApiError from "../utils/api.error";
+import { logger } from '../utils/logger';
 
 /**
  * Middleware to catch 404 Not Found errors for undefined endpoints.
@@ -42,16 +43,16 @@ export const errorHandler = (
     message = "A resource with this identifier or unique attribute already exists";
   }
 
-  if (statusCode >= 500) {
-    console.error(
-      `💥 [Unhandled Server Error] ${req.method} ${req.originalUrl}:`,
-      err
-    );
-  } else {
-    console.warn(
-      `⚠️ [Client Error ${statusCode}] ${req.method} ${req.originalUrl}: ${message}`
-    );
-  }
+  const logContext = {
+    err,
+    requestId: req.id,
+    userId: req.user?.user_uuid,
+    method: req.method,
+    path: req.originalUrl,
+    statusCode,
+  };
+  if (statusCode >= 500) logger.error(logContext, message);
+  else logger.warn(logContext, message);
 
   return res.status(statusCode).json({
     success: false,

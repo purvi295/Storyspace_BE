@@ -162,7 +162,7 @@ export class UserController {
   // GET /api/users/followers - Get user's followers
   async getFollowers(req: Request, res: Response) {
     try {
-      const user_uuid = req.body.user_uuid;
+      const user_uuid = (req.query.user_uuid as string) || req.body?.user_uuid;
       if (!user_uuid || typeof user_uuid !== "string") {
         return sendErrorResponse(res, 400, "User UUID is required");
       }
@@ -190,7 +190,7 @@ export class UserController {
   // GET /api/users/following - Get users followed by user
   async getFollowing(req: Request, res: Response) {
     try {
-      const user_uuid = req.body.user_uuid;
+      const user_uuid = (req.query.user_uuid as string) || req.body?.user_uuid;
       if (!user_uuid || typeof user_uuid !== "string") {
         return sendErrorResponse(res, 400, "User UUID is required");
       }
@@ -223,7 +223,7 @@ export class UserController {
         return sendErrorResponse(res, 401, "User not authenticated");
       }
 
-      const followingUuid = req.body.user_uuid;
+      const followingUuid = (req.query.user_uuid as string) || req.body?.user_uuid;
       if (!followingUuid || typeof followingUuid !== "string") {
         return sendErrorResponse(res, 400, "User UUID is required");
       }

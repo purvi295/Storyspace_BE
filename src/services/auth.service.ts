@@ -1,14 +1,21 @@
+// src/services/auth.service.ts
+// Business logic for authentication, password hashing, JWT generation, and Refresh Token rotation/revocation
+
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
 import { User } from "../entities/user.entity";
 import { LoginDto, RegisterDto } from "../dtos/auth.dto";
 import { authRepository } from "../repositories/auth.repository";
+import { refreshTokenRepository } from "../repositories/refresh-token.repository";
 import ApiError from "../utils/api.error";
 import { AppDataSource } from "../database/data-source";
+import config from "../config/env.config";
 
-const JWT_SECRET =
-  process.env.JWT_SECRET || "your-secret-key-change-in-production";
-const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || "1d";
+const JWT_SECRET = config.jwt.secret;
+const JWT_EXPIRES_IN = config.jwt.expiresIn;
+const JWT_REFRESH_SECRET = config.jwt.refreshSecret;
+const JWT_REFRESH_EXPIRES_IN = config.jwt.refreshExpiresIn;
 
 export interface JwtUserPayload {
   user_uuid: string;
@@ -19,14 +26,31 @@ export interface JwtUserPayload {
   exp?: number;
 }
 
+export interface JwtRefreshPayload {
+  user_uuid: string;
+  jti: string; // Unique JWT Token ID for token tracking
+  iat?: number;
+  exp?: number;
+}
+
+export interface AuthResponse {
+  user: Partial<User>;
+  accessToken: string;
+  refreshToken: string;
+}
+
 export class AuthService {
-  // Hash password
+  /**
+   * Hashes a raw plain-text password using bcrypt with a salt factor of 10
+   */
   async hashPassword(password: string): Promise<string> {
     const salt = await bcrypt.genSalt(10);
     return bcrypt.hash(password, salt);
   }
 
-  // Compare password
+  /**
+   * Securely compares plain text password against stored bcrypt hash
+   */
   async comparePassword(
     password: string,
     hashedPassword: string,
@@ -34,8 +58,17 @@ export class AuthService {
     return bcrypt.compare(password, hashedPassword);
   }
 
-  // Generate JWT token
-  generateToken(user: User): string {
+  /**
+   * Generates a cryptographic SHA-256 hash of a string
+   */
+  hashToken(token: string): string {
+    return crypto.createHash("sha256").update(token).digest("hex");
+  }
+
+  /**
+   * Generates a short-lived Access Token (e.g., 15 minutes)
+   */
+  generateAccessToken(user: User): string {
     const payload: JwtUserPayload = {
       user_uuid: user.user_uuid,
       email: user.email,
@@ -47,7 +80,52 @@ export class AuthService {
     } as jwt.SignOptions);
   }
 
-  // Verify JWT token
+  /**
+   * Generates a long-lived Refresh Token (e.g., 7 days) and stores its SHA-256 hash in DB
+   */
+  async generateRefreshToken(user: User): Promise<string> {
+    const jti = crypto.randomUUID();
+    const payload: JwtRefreshPayload = {
+      user_uuid: user.user_uuid,
+      jti,
+    };
+
+    const token = jwt.sign(payload, JWT_REFRESH_SECRET, {
+      expiresIn: JWT_REFRESH_EXPIRES_IN,
+    } as jwt.SignOptions);
+
+    // Calculate expiration date for database record (7 days from now)
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    // Store only the SHA-256 hash in the database
+    await refreshTokenRepository.create({
+      user_uuid: user.user_uuid,
+      token_hash: this.hashToken(token),
+      expires_at: expiresAt,
+    });
+
+    return token;
+  }
+
+  /**
+   * Convenience helper to generate both Access and Refresh tokens
+   */
+  async generateTokens(user: User): Promise<{ accessToken: string; refreshToken: string }> {
+    const accessToken = this.generateAccessToken(user);
+    const refreshToken = await this.generateRefreshToken(user);
+    return { accessToken, refreshToken };
+  }
+
+  /**
+   * Legacy alias for generateAccessToken
+   */
+  generateToken(user: User): string {
+    return this.generateAccessToken(user);
+  }
+
+  /**
+   * Verifies an Access Token against JWT_SECRET
+   */
   verifyToken(token: string): JwtUserPayload | null {
     try {
       return jwt.verify(token, JWT_SECRET) as JwtUserPayload;
@@ -56,10 +134,78 @@ export class AuthService {
     }
   }
 
-  // Register user
-  async register(
-    data: RegisterDto,
-  ): Promise<{ user: Partial<User>; token: string }> {
+  /**
+   * Verifies a Refresh Token against JWT_REFRESH_SECRET
+   */
+  verifyRefreshToken(token: string): JwtRefreshPayload | null {
+    try {
+      return jwt.verify(token, JWT_REFRESH_SECRET) as JwtRefreshPayload;
+    } catch (error) {
+      return null;
+    }
+  }
+
+  /**
+   * Rotates a Refresh Token: Validates, revokes old token, and issues a new pair
+   */
+  async refreshAccessToken(rawRefreshToken: string): Promise<AuthResponse> {
+    if (!rawRefreshToken) {
+      throw ApiError.badRequest("Refresh token is required");
+    }
+
+    // 1. Verify cryptographic JWT signature
+    const payload = this.verifyRefreshToken(rawRefreshToken);
+    if (!payload) {
+      throw ApiError.unauthorized("Invalid or expired refresh token");
+    }
+
+    // 2. Hash token to look up in DB
+    const tokenHash = this.hashToken(rawRefreshToken);
+    const tokenRecord = await refreshTokenRepository.findByTokenHash(tokenHash);
+
+    if (!tokenRecord) {
+      throw ApiError.unauthorized("Refresh token not found");
+    }
+
+    // 3. SECURITY: Token Reuse Detection
+    // If a revoked refresh token is presented, an attacker may have compromised this token!
+    // Invalidate ALL tokens belonging to this user immediately.
+    if (tokenRecord.is_revoked) {
+      await refreshTokenRepository.revokeAllForUser(tokenRecord.user_uuid);
+      throw ApiError.unauthorized(
+        "Security Alert: Compromised refresh token detected. All active sessions have been revoked."
+      );
+    }
+
+    // 4. Verify DB-level expiration
+    if (new Date() > new Date(tokenRecord.expires_at)) {
+      throw ApiError.unauthorized("Refresh token has expired");
+    }
+
+    // 5. Revoke the old refresh token (Token Rotation guarantee)
+    await refreshTokenRepository.revokeByTokenHash(tokenHash);
+
+    // 6. Fetch the user
+    const user = await authRepository.findByUuid(tokenRecord.user_uuid);
+    if (!user) {
+      throw ApiError.notFound("User no longer exists");
+    }
+
+    // 7. Generate a new token pair
+    const tokens = await this.generateTokens(user);
+
+    const { password: _, ...userWithoutPassword } = user;
+    return {
+      user: userWithoutPassword,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    };
+  }
+
+  /**
+   * Register a new user
+   */
+  async register(data: RegisterDto): Promise<AuthResponse> {
     const { email, password, username, full_name } = data;
 
     const existingUser = await authRepository.findByEmailOrUsername(
@@ -100,12 +246,15 @@ export class AuthService {
 
       await queryRunner.commitTransaction();
 
-      // Generate token
-      const token = this.generateToken(savedUser);
+      // Generate both access and refresh tokens
+      const tokens = await this.generateTokens(savedUser);
 
-      // Return user without password
       const { password: _, ...userWithoutPassword } = savedUser;
-      return { user: userWithoutPassword, token };
+      return {
+        user: userWithoutPassword,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+      };
     } catch (error) {
       await queryRunner.rollbackTransaction();
       throw error;
@@ -114,8 +263,10 @@ export class AuthService {
     }
   }
 
-  // Login user
-  async login(data: LoginDto): Promise<{ user: Partial<User>; token: string }> {
+  /**
+   * Authenticate a user via email and password
+   */
+  async login(data: LoginDto): Promise<AuthResponse> {
     const { email, password } = data;
 
     const user = await authRepository.findByEmail(email);
@@ -131,15 +282,37 @@ export class AuthService {
       throw ApiError.unauthorized("Invalid password");
     }
 
-    // Generate token
-    const token = this.generateToken(user);
+    // Generate access & refresh tokens
+    const tokens = await this.generateTokens(user);
 
-    // Return user without password
     const { password: _, ...userWithoutPassword } = user;
-    return { user: userWithoutPassword, token };
+    return {
+      user: userWithoutPassword,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    };
   }
 
-  // Get user by its UUID primary key
+  /**
+   * Logout user and revoke tokens
+   */
+  async logout(userUuid: string, rawRefreshToken?: string): Promise<void> {
+    if (rawRefreshToken) {
+      // Revoke this specific refresh token
+      const tokenHash = this.hashToken(rawRefreshToken);
+      await refreshTokenRepository.revokeByTokenHash(tokenHash);
+    } else {
+      // Revoke all refresh tokens for this user
+      await refreshTokenRepository.revokeAllForUser(userUuid);
+    }
+
+    // Invalidate access tokens issued prior to this moment
+    await authRepository.updateLastLogoutAt(userUuid);
+  }
+
+  /**
+   * Get user by UUID
+   */
   async getUserByUuid(user_uuid: string): Promise<User | null> {
     return authRepository.findByUuid(user_uuid);
   }

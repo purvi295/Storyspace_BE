@@ -32,7 +32,7 @@ export class StorageService {
    * @param folder Subfolder within the bucket (e.g., 'stories', 'avatars')
    * @returns {Promise<{ key: string; url: string }>}
    */
-  async uploadImage(
+  uploadImage(
     file: Express.Multer.File,
     folder: string = 'stories'
   ): Promise<{ key: string; url: string }> {
@@ -40,20 +40,28 @@ export class StorageService {
     const randomHex = crypto.randomBytes(8).toString('hex');
     const key = `${folder}/${Date.now()}-${randomHex}${fileExtension}`;
 
-    await this.s3Client.send(
-      new PutObjectCommand({
-        Bucket: this.bucket,
-        Key: key,
-        Body: file.buffer,
-        ContentType: file.mimetype,
+    // Promise-chain form of the upload workflow. Each .then() receives the
+    // result of the preceding asynchronous operation.
+    return this.s3Client
+      .send(
+        new PutObjectCommand({
+          Bucket: this.bucket,
+          Key: key,
+          Body: file.buffer,
+          ContentType: file.mimetype,
+        })
+      )
+      .then(() => {
+        // This executes only after Neon S3 confirms the upload.
+        const cleanEndpoint = this.endpoint.replace(/\/+$/, '');
+        return { key, url: `${cleanEndpoint}/${this.bucket}/${key}` };
       })
-    );
-
-    // Public URL for public_read buckets: ${endpoint}/${bucket}/${key}
-    const cleanEndpoint = this.endpoint.replace(/\/+$/, '');
-    const url = `${cleanEndpoint}/${this.bucket}/${key}`;
-
-    return { key, url };
+      .catch((error: unknown) => {
+        // Add useful context while preserving the original error as its cause.
+        throw new Error(`Failed to upload image: ${file.originalname}`, {
+          cause: error,
+        });
+      });
   }
 
   /**

@@ -42,6 +42,17 @@ export class StoryService {
         );
       }
 
+      // Check if story with this slug already exists
+      const existingSlug = await storyRepository.findBySlug(
+        slug,
+        queryRunner.manager,
+      );
+      if (existingSlug) {
+        throw ApiError.conflict(
+          "A story with this title or slug already exists",
+        );
+      }
+
       const story = await storyRepository.create(
         {
           user_uuid,
@@ -53,7 +64,7 @@ export class StoryService {
 
       await queryRunner.commitTransaction();
       return story;
-    } catch (error: unknown) {
+    } catch (error: any) {
       await queryRunner.rollbackTransaction();
       throw error;
     } finally {
@@ -91,13 +102,14 @@ export class StoryService {
    * Enforces visibility: non-followers only see public stories.
    */
   static async getStoriesByUser(
-    username: string,
+    user_uuid: string,
     query: StoryQueryDto,
     viewerUuid?: string,
     viewerRole?: string,
   ) {
-    // Find user by username
-    const user = await userRepository.findByUsername(username);
+    // Find user by UUID
+    const cleanUuid = user_uuid ? user_uuid.trim() : "";
+    const user = await userRepository.findByUuid(cleanUuid);
     if (!user) {
       throw ApiError.notFound("User not found");
     }
@@ -315,7 +327,7 @@ export class StoryService {
 
       await queryRunner.commitTransaction();
       return updatedStory;
-    } catch (error: unknown) {
+    } catch (error: any) {
       await queryRunner.rollbackTransaction();
       throw error;
     } finally {

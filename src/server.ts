@@ -17,6 +17,15 @@ const startServer = async () => {
     await AppDataSource.initialize();
     console.log(`🗄️ TypeORM DataSource initialized successfully (${config.db.name})`);
 
+    // Attach error listener to the underlying node-postgres connection pool.
+    // Cloud databases (e.g. Neon) close idle connections; listening to 'error' prevents uncaught crash.
+    const pool = (AppDataSource.driver as any).master;
+    if (pool && typeof pool.on === 'function') {
+      pool.on('error', (err: Error) => {
+        console.error('⚠️ Unexpected idle client error in PostgreSQL pool:', err.message);
+      });
+    }
+
     // 2. Start HTTP server
     server = app.listen(PORT, () => {
       console.log(`=========================================`);

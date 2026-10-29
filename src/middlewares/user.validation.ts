@@ -105,6 +105,14 @@ export const userUuidBodySchema = Joi.object({
  * Validates pagination query parameters for followers/following lists.
  */
 export const followPaginationQuerySchema = Joi.object({
+  user_uuid: Joi.string()
+    .trim()
+    .pattern(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
+    .required()
+    .messages({
+      "string.pattern.base": "Invalid UUID format for user_uuid",
+      "any.required": "user_uuid query parameter is required",
+    }),
   page: Joi.number().integer().min(1).default(1).messages({
     "number.base": "Page must be a number",
     "number.integer": "Page must be an integer",
@@ -116,6 +124,20 @@ export const followPaginationQuerySchema = Joi.object({
     "number.min": "Limit must be at least 1",
     "number.max": "Limit cannot exceed 100",
   }),
+});
+
+/**
+ * Validates query parameter for checking if following target user
+ */
+export const isFollowingQuerySchema = Joi.object({
+  user_uuid: Joi.string()
+    .trim()
+    .pattern(/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i)
+    .required()
+    .messages({
+      "string.pattern.base": "Invalid UUID format for user_uuid",
+      "any.required": "user_uuid query parameter is required",
+    }),
 });
 
 export default {

@@ -7,7 +7,7 @@ import { commentController } from "../controllers/comment.controller";
 import { authenticateToken, optionalAuthenticateToken } from "../middlewares/auth.middleware";
 import { uploadOptionalImage } from "../middlewares/upload.middleware";
 import validate from "../middlewares/validate.middleware";
-import { usernameParamSchema } from "../middlewares/user.validation";
+import { userUuidParamSchema } from "../middlewares/common.validation";
 import {
   createStorySchema,
   updateStorySchema,
@@ -38,12 +38,12 @@ router.get(
   (req, res) => storyController.getPublicStories(req, res)
 );
 
-// GET /api/stories/user/:username - Get stories by a specific user (filters followers-only if not followed)
+// GET /api/stories/user/:user_uuid - Get stories by user_uuid (filters followers-only if not followed)
 router.get(
-  "/user/:username",
+  "/user/:user_uuid",
   optionalAuthenticateToken,
   validate({
-    params: usernameParamSchema,
+    params: userUuidParamSchema,
     query: userStoriesQuerySchema,
   }),
   (req, res) => storyController.getStoriesByUser(req, res)

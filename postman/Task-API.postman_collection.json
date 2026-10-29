@@ -104,20 +104,6 @@
   ],
   "item": [
     {
-      "name": "Health",
-      "item": [
-        {
-          "name": "Health Check",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": "{{baseUrl}}/api/health",
-            "description": "No body."
-          }
-        }
-      ]
-    },
-    {
       "name": "Authentication",
       "item": [
         {
@@ -129,7 +115,8 @@
                 "exec": [
                   "const body = pm.response.json();",
                   "const payload = body.data || body;",
-                  "if (payload.token) pm.collectionVariables.set('token', payload.token);",
+                  "const token = payload.accessToken || payload.token;",
+                  "if (token) pm.collectionVariables.set('token', token);",
                   "if (payload.user && payload.user.username) pm.collectionVariables.set('username', payload.user.username);",
                   "if (payload.user && payload.user.user_uuid) pm.collectionVariables.set('userUuid', payload.user.user_uuid);"
                 ],
@@ -167,7 +154,8 @@
                 "exec": [
                   "const body = pm.response.json();",
                   "const payload = body.data || body;",
-                  "if (payload.token) pm.collectionVariables.set('token', payload.token);",
+                  "const token = payload.accessToken || payload.token;",
+                  "if (token) pm.collectionVariables.set('token', token);",
                   "if (payload.user && payload.user.username) pm.collectionVariables.set('username', payload.user.username);",
                   "if (payload.user && payload.user.user_uuid) pm.collectionVariables.set('userUuid', payload.user.user_uuid);"
                 ],
@@ -472,7 +460,7 @@
                   }
                 },
                 "url": {
-                  "raw": "{{baseUrl}}/api/users/followers?page=1&limit=10",
+                  "raw": "{{baseUrl}}/api/users/followers?user_uuid={{userUuid}}&page=1&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -483,6 +471,11 @@
                   ],
                   "query": [
                     {
+                      "key": "user_uuid",
+                      "value": "{{userUuid}}",
+                      "description": "Required. Target user UUID."
+                    },
+                    {
                       "key": "page",
                       "value": "1",
                       "description": "Optional. Page number, starts at 1."
@@ -494,30 +487,16 @@
                     }
                   ]
                 },
-                "description": "Body must contain user_uuid. Optional query params: page, limit."
+                "description": "Query param user_uuid is required. Optional query params: page, limit."
               }
             },
             {
               "name": "List Following",
               "request": {
                 "method": "GET",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"user_uuid\": \"{{userUuid}}\"\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
+                "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/api/users/following?page=1&limit=10",
+                  "raw": "{{baseUrl}}/api/users/following?user_uuid={{userUuid}}&page=1&limit=10",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -528,6 +507,11 @@
                   ],
                   "query": [
                     {
+                      "key": "user_uuid",
+                      "value": "{{userUuid}}",
+                      "description": "Required. Target user UUID."
+                    },
+                    {
                       "key": "page",
                       "value": "1",
                       "description": "Optional. Page number, starts at 1."
@@ -539,7 +523,7 @@
                     }
                   ]
                 },
-                "description": "Body must contain user_uuid. Optional query params: page, limit."
+                "description": "Query param user_uuid is required. Optional query params: page, limit."
               }
             },
             {
@@ -556,23 +540,26 @@
                   ]
                 },
                 "method": "GET",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"user_uuid\": \"{{userUuid}}\"\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/users/is-following?user_uuid={{userUuid}}",
+                  "host": [
+                    "{{baseUrl}}"
+                  ],
+                  "path": [
+                    "api",
+                    "users",
+                    "is-following"
+                  ],
+                  "query": [
+                    {
+                      "key": "user_uuid",
+                      "value": "{{userUuid}}",
+                      "description": "Required. Target user UUID."
                     }
-                  }
+                  ]
                 },
-                "url": "{{baseUrl}}/api/users/is-following",
-                "description": "Body must contain user_uuid."
+                "description": "Query param user_uuid is required."
               }
             }
           ]
@@ -617,7 +604,7 @@
                 "method": "GET",
                 "header": [],
                 "url": {
-                  "raw": "{{baseUrl}}/api/stories/user/{{username}}?page=1&limit=10&status=published&visibility=public",
+                  "raw": "{{baseUrl}}/api/stories/user/{{userUuid}}?page=1&limit=10&status=published&visibility=public",
                   "host": [
                     "{{baseUrl}}"
                   ],
@@ -625,7 +612,7 @@
                     "api",
                     "stories",
                     "user",
-                    "{{username}}"
+                    "{{userUuid}}"
                   ],
                   "query": [
                     {
