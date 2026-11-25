@@ -13,27 +13,23 @@ const router = Router();
 router.use(authenticateToken, requireAdmin);
 
 // GET /api/admin/stats - Overview of platform statistics (commented out - not implemented)
-// router.get("/stats", (req, res) => adminController.getStats(req, res));
+router.get("/stats", (req, res) => adminController.getStats(req, res));
 
 // GET /api/admin/users - User directory for admin management
-router.get(
-  "/users",
-  validate({ query: userListQuerySchema }),
-  (req, res) => adminController.listUsers(req, res)
+router.get("/users", validate({ query: userListQuerySchema }), (req, res) =>
+  adminController.listUsers(req, res),
 );
 
 // DELETE /api/admin/stories - Delete any story as admin
-router.delete(
-  "/stories",
-  validate({ body: uuidBodySchema }),
-  (req, res) => adminController.deleteStory(req, res)
+router.delete("/stories", validate({ body: uuidBodySchema }), (req, res) =>
+  adminController.deleteStory(req, res),
 );
 
 // DELETE /api/admin/comments/:comment_uuid - Delete any comment as admin
 router.delete(
   "/comments/:comment_uuid",
   validate({ params: uuidParamSchema }),
-  (req, res) => adminController.deleteComment(req, res)
+  (req, res) => adminController.deleteComment(req, res),
 );
 
 export default router;

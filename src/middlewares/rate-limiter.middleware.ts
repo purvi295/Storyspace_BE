@@ -10,7 +10,7 @@ import { sendErrorResponse } from "../utils/api.response";
  * Restricts an IP address to 5 attempts every 15 minutes.
  */
 export const loginRateLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 15-minute time window
+  windowMs: 15 * 60 * 1000, // 15-minute time window
   max: 50, // Maximum 5 requests allowed per window per IP
   standardHeaders: true, // Return standard RateLimit-* headers in the response
   legacyHeaders: false, // Disable the deprecated X-RateLimit-* headers

@@ -10,15 +10,24 @@ import { AppError } from "../utils/api.error";
 
 export class AdminController {
   // GET /api/admin/stats
-  // async getStats(_req: Request, res: Response) {
-  //   try {
-  //     const stats = await adminService.getPlatformStats();
-  //     return sendApiResponse(res, 200, { stats }, "Platform stats retrieved successfully");
-  //   } catch (error: unknown) {
-  //     const err = error as AppError;
-  //     return sendErrorResponse(res, err.statusCode || 500, (error as Error).message);
-  //   }
-  // }
+  async getStats(_req: Request, res: Response) {
+    try {
+      const stats = await adminService.getPlatformStats();
+      return sendApiResponse(
+        res,
+        200,
+        { stats },
+        "Platform stats retrieved successfully",
+      );
+    } catch (error: unknown) {
+      const err = error as AppError;
+      return sendErrorResponse(
+        res,
+        err.statusCode || 500,
+        (error as Error).message,
+      );
+    }
+  }
 
   // GET /api/admin/users
   async listUsers(req: Request, res: Response) {
@@ -28,11 +37,7 @@ export class AdminController {
       const search = req.query.search as string | undefined;
 
       const result = await adminService.listUsers({ page, limit, search });
-      return sendPaginatedResponse(
-        res,
-        result,
-        "Users retrieved successfully",
-      );
+      return sendPaginatedResponse(res, result, "Users retrieved successfully");
     } catch (error: unknown) {
       const err = error as AppError;
       return sendErrorResponse(
@@ -65,7 +70,9 @@ export class AdminController {
   // DELETE /api/admin/comments/:comment_uuid
   async deleteComment(req: Request, res: Response) {
     try {
-      const comment_uuid = Array.isArray(req.params.comment_uuid) ? req.params.comment_uuid[0] : req.params.comment_uuid;
+      const comment_uuid = Array.isArray(req.params.comment_uuid)
+        ? req.params.comment_uuid[0]
+        : req.params.comment_uuid;
       const user_uuid = req.user?.user_uuid;
       const role = req.user?.role || "admin";
 

@@ -13,7 +13,6 @@ import storyRoutes from "./routes/story.routes";
 import commentRoutes from "./routes/comment.routes";
 import uploadRoutes from "./routes/upload.routes";
 import adminRoutes from "./routes/admin.routes";
-import internalRoutes from "./routes/internal.routes";
 import { notFoundHandler, errorHandler } from "./middlewares/error.handler";
 import { logger } from "./utils/logger";
 
@@ -31,7 +30,7 @@ const app: Application = express();
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
-  })
+  }),
 );
 
 app.use(cors());
@@ -41,9 +40,10 @@ app.use(
   pinoHttp({
     logger,
     genReqId: (req) =>
-      (req.headers["x-request-id"] as string | undefined) || crypto.randomUUID(),
+      (req.headers["x-request-id"] as string | undefined) ||
+      crypto.randomUUID(),
     customProps: (req) => ({ userId: req.user?.user_uuid }),
-  })
+  }),
 );
 
 // ==========================================
@@ -55,7 +55,6 @@ app.use("/api/stories", storyRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/admin", adminRoutes);
-app.use("/internal", internalRoutes);
 
 // ==========================================
 // 4. Error Handling Middlewares

@@ -5,11 +5,7 @@ import {
   SelectQueryBuilder,
 } from "typeorm";
 import { AppDataSource } from "../database/data-source";
-import {
-  CreateStoryDto,
-  UpdateStoryDto,
-  StoryQueryDto,
-} from "../dtos/story.dto";
+import { CreateStoryDto, UpdateStoryDto } from "../dtos/story.dto";
 import { Story } from "../entities/story.entity";
 import { Follow } from "../entities/follow.entity";
 import { STORY_STATUS, STORY_VISIBILITY } from "../config/constants";
