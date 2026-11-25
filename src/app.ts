@@ -49,6 +49,15 @@ app.use(
 // ==========================================
 // 2. Application Domain Routes
 // ==========================================
+// Health check route for Docker, Kubernetes, and uptime monitoring
+app.get("/api/health", (_req, res) => {
+  res.status(200).json({
+    status: "ok",
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+  });
+});
+
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/stories", storyRoutes);

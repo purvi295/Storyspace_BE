@@ -22,6 +22,8 @@ pipeline {
         DEPLOY_SERVER_USER = 'shrungi'
         DEPLOY_SERVER_HOST = '127.0.0.1'                       // Localhost or remote server IP
         DEPLOY_PATH        = '/home/shrungi/learning-app-deploy'
+        APP_PORT           = '5000'                            // External port exposed on host (PC)
+
     }
 
     options {
