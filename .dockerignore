@@ -1,0 +1,17 @@
+node_modules
+dist
+.git
+.gitignore
+.env
+.env.*
+*.md
+coverage
+postman
+.agents
+.claude
+.code-review-graph
+npm-debug.log*
+.DS_Store
+Dockerfile
+docker-compose*.yml
+Jenkinsfile
