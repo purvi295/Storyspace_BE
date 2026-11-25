@@ -5,7 +5,7 @@ pipeline {
         // ==========================================
         // 1. Docker Registry & Image Configuration
         // ==========================================
-        // Set your Docker Hub username here (or any container registry):
+        // Replace with your Docker Hub username
         DOCKER_HUB_USER   = 'purvi294'
         IMAGE_NAME        = 'learning-app'
         IMAGE_TAG         = "${BUILD_NUMBER}"
@@ -20,7 +20,7 @@ pipeline {
         // 2. Deployment Server Details
         // ==========================================
         DEPLOY_SERVER_USER = 'shrungi'
-        DEPLOY_SERVER_HOST = '127.0.0.1'                       // Localhost or server IP
+        DEPLOY_SERVER_HOST = '127.0.0.1'                       // Localhost or remote server IP
         DEPLOY_PATH        = '/home/shrungi/learning-app-deploy'
     }
 
@@ -38,19 +38,9 @@ pipeline {
             }
         }
 
-        stage('Build & Test') {
-            steps {
-                echo "🧪 Step 2: Running npm build verification..."
-                sh '''
-                    npm ci
-                    npm run build
-                '''
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
-                echo "🐳 Step 3: Building Docker Image: ${FULL_IMAGE}..."
+                echo "🐳 Step 2: Building Docker Image: ${FULL_IMAGE} (compilation runs inside Docker)..."
                 sh """
                     docker build -t ${FULL_IMAGE} -t ${LATEST_IMAGE} .
                 """
@@ -59,7 +49,7 @@ pipeline {
 
         stage('Push Image to Docker Hub') {
             steps {
-                echo "🚀 Step 4: Authenticating & pushing image to Docker Hub..."
+                echo "🚀 Step 3: Authenticating & pushing image to Docker Hub..."
                 withCredentials([usernamePassword(
                     credentialsId: "${DOCKER_CREDENTIALS_ID}",
                     usernameVariable: 'DH_USER',
@@ -82,7 +72,7 @@ pipeline {
 
         stage('Deploy via SSH with Docker Pull') {
             steps {
-                echo "📡 Step 5: Connecting via SSH to ${DEPLOY_SERVER_USER}@${DEPLOY_SERVER_HOST} to deploy..."
+                echo "📡 Step 4: Connecting via SSH to ${DEPLOY_SERVER_USER}@${DEPLOY_SERVER_HOST} to deploy..."
                 sshagent([SERVER_SSH_CREDENTIALS_ID]) {
                     sh """
                         # 1. Ensure target deployment folder exists on server
@@ -113,7 +103,7 @@ pipeline {
 
         stage('Verify Health Check') {
             steps {
-                echo "🩺 Step 6: Verifying container health on server..."
+                echo "🩺 Step 5: Verifying container health on server..."
                 sshagent([SERVER_SSH_CREDENTIALS_ID]) {
                     sh """
                         ssh -o StrictHostKeyChecking=no ${DEPLOY_SERVER_USER}@${DEPLOY_SERVER_HOST} "
@@ -130,7 +120,7 @@ pipeline {
     post {
         always {
             echo "🧹 Cleaning up unused Docker images..."
-            sh 'docker image prune -f'
+            sh 'docker image prune -f || true'
         }
         success {
             echo "🎉 Pipeline finished successfully! Image pushed to Docker Hub and deployed."
