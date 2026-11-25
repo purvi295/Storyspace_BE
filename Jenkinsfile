@@ -118,10 +118,6 @@ pipeline {
     }
 
     post {
-        always {
-            echo "🧹 Cleaning up unused Docker images..."
-            sh 'docker image prune -f || true'
-        }
         success {
             echo "🎉 Pipeline finished successfully! Image pushed to Docker Hub and deployed."
         }
